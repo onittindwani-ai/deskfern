@@ -1,0 +1,7 @@
+{
+  "text": "{\"sentences\": [{\"text\": \"How far back you can look depends on the plan: 7 days on Free, 90 days on Team and no limit on Business.\", \"passage_ids\": [42]}, {\"text\": \"Fieldnote saves versions of a note as you edit.\", \"passage_ids\": [42]}], \"confidence\": 70, \"cannot_answer\": false}",
+  "input_tokens": 150,
+  "output_tokens": 40,
+  "model": "claude-sonnet-5-5",
+  "prompt_preview": "[task:write_answer]\nWrite the reply sentences for the ticket in the first data block. Use only the pages in the second data block.\nKEY_WORDS: [[\"far\", 3.2], [\"o"
+}

@@ -1,0 +1,773 @@
+{
+ "dated": "2026-11-23",
+ "note": "Judgements from sources and our own adapter work on the date shown, not benchmarks. A tool marked not run was scored from its description only, and a source marked not fetched was not read.",
+ "weights": {
+  "fit": 35,
+  "setup": 15,
+  "reliability": 15,
+  "cost": 15,
+  "data": 10,
+  "integration": 10
+ },
+ "criteria_names": {
+  "fit": "Fit",
+  "setup": "Setup effort",
+  "reliability": "Reliability and upkeep",
+  "cost": "Cost",
+  "data": "Data control",
+  "integration": "Integration depth"
+ },
+ "groups": [
+  {
+   "id": "helpdesk",
+   "job": "Help desk (where customers write and where drafts are sent from)",
+   "reference": "intercom",
+   "recommendation": {
+    "beginner": "Use the help desk the client already has. If they have none, Chatwoot is a good first choice because Deskfern's webhook check for it was written from the vendor's own help article.",
+    "implementer": "Chatwoot is the best tested path here (signature check and send call against a stand in). Intercom, Zendesk and Freshdesk adapters are written from memory of public docs and need a test against the client's own account first.",
+    "cost_sensitive": "Chatwoot is open source and can be hosted for the cost of a small server. The paid desks have their own price pages, read them yourself before choosing.",
+    "open_source_when": "Open source is the right call when the client wants conversations on their own server, or a team is small and can run Docker. It is the wrong call when support staff already live in Intercom, Zendesk or Freshdesk."
+   },
+   "tools": [
+    {
+     "id": "intercom",
+     "name": "Intercom",
+     "kind": "paid",
+     "supported_in_deskfern": "Adapter written from memory, tested against a stand in",
+     "run": "not run against Intercom",
+     "sources": [
+      {
+       "url": "https://developers.intercom.com/docs",
+       "checked": "not fetched (script rendered)"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 75,
+       "evidence": "Strong AI help desk with its own answer product, so Deskfern overlaps with it. Our adapter reads conversations and posts replies and notes."
+      },
+      "setup": {
+       "score": 60,
+       "evidence": "Needs an access token from the developer hub. Not run here, judged from the steps."
+      },
+      "reliability": {
+       "score": 80,
+       "evidence": "Mature hosted service with wide use."
+      },
+      "cost": {
+       "score": 50,
+       "evidence": "Per seat and per resolution pricing in general. Not read today, no figures quoted."
+      },
+      "data": {
+       "score": 50,
+       "evidence": "Data sits with the vendor, in the vendor's regions."
+      },
+      "integration": {
+       "score": 55,
+       "evidence": "Adapter covers list and reply only, written from memory and not run."
+      }
+     }
+    },
+    {
+     "id": "chatwoot",
+     "name": "Chatwoot",
+     "kind": "open_source",
+     "supported_in_deskfern": "Adapter tested against a stand in, webhook signature rule read from the vendor",
+     "run": "not run against Chatwoot",
+     "sources": [
+      {
+       "url": "https://www.chatwoot.com/hc/user-guide/articles/1677693021-how-to-use-webhooks",
+       "checked": "2026-11-23 (signature headers and signed string read)"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 78,
+       "evidence": "Covers shared inbox, email and chat channels, which is what a small client needs. No built in answer engine, which Deskfern supplies."
+      },
+      "setup": {
+       "score": 55,
+       "evidence": "Self hosting needs Docker, a database and an email setup. A hosted plan exists too."
+      },
+      "reliability": {
+       "score": 70,
+       "evidence": "Active project, but you own the upgrades when self hosted."
+      },
+      "cost": {
+       "score": 85,
+       "evidence": "Free to self host, you pay for the server and your time."
+      },
+      "data": {
+       "score": 90,
+       "evidence": "Self hosting keeps every conversation on your own server."
+      },
+      "integration": {
+       "score": 75,
+       "evidence": "Webhook check follows the vendor's help article. The send path is UNVERIFIED because the developer docs page could not be read."
+      }
+     }
+    },
+    {
+     "id": "zendesk",
+     "name": "Zendesk",
+     "kind": "paid",
+     "supported_in_deskfern": "Adapter written from memory, tested against a stand in",
+     "run": "not run against Zendesk",
+     "sources": [
+      {
+       "url": "https://developer.zendesk.com/api-reference/",
+       "checked": "not fetched"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 72,
+       "evidence": "Full ticketing with SLAs and reporting. Deskfern adds cited drafts on top."
+      },
+      "setup": {
+       "score": 60,
+       "evidence": "Needs a subdomain, an agent email and an API token. Not run."
+      },
+      "reliability": {
+       "score": 85,
+       "evidence": "Long established service."
+      },
+      "cost": {
+       "score": 45,
+       "evidence": "Per agent pricing in general. Not read today."
+      },
+      "data": {
+       "score": 50,
+       "evidence": "Vendor hosted. This is a judgement, not a measurement."
+      },
+      "integration": {
+       "score": 50,
+       "evidence": "Reads open tickets and adds a comment. Written from memory, not run."
+      }
+     }
+    },
+    {
+     "id": "freshdesk",
+     "name": "Freshdesk",
+     "kind": "paid",
+     "supported_in_deskfern": "Adapter written from memory, tested against a stand in",
+     "run": "not run against Freshdesk",
+     "sources": [
+      {
+       "url": "https://developers.freshdesk.com/api/",
+       "checked": "not fetched"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 70,
+       "evidence": "Ticketing with automation and a friendly price ladder in general. Fits small teams."
+      },
+      "setup": {
+       "score": 65,
+       "evidence": "API key and domain are enough to start. Not run."
+      },
+      "reliability": {
+       "score": 78,
+       "evidence": "Established service. This is a judgement, not a measurement."
+      },
+      "cost": {
+       "score": 55,
+       "evidence": "Has a free tier in general, not confirmed today."
+      },
+      "data": {
+       "score": 50,
+       "evidence": "Vendor hosted. This is a judgement, not a measurement."
+      },
+      "integration": {
+       "score": 50,
+       "evidence": "Reads tickets and posts replies. Private notes are not built. Written from memory, not run."
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "search",
+   "job": "Search index for the knowledge base",
+   "reference": "vector_db",
+   "recommendation": {
+    "beginner": "Keep the built in SQLite search for a demo and for a small help centre. You do not need to set up anything else.",
+    "implementer": "Use SQLite full text for a single client on one server, Postgres full text when the client runs on Postgres. Add real embeddings only after you measure that keyword search misses too many questions (the held out numbers in this repo show it does for wording that differs from the pages).",
+    "cost_sensitive": "Both full text options cost nothing extra. A hosted vector database adds a monthly bill and a second place your data lives.",
+    "open_source_when": "Open source search is the right call for a help centre of a few thousand pages. A hosted vector database is worth it when meaning based search over a large, changing set matters more than cost."
+   },
+   "tools": [
+    {
+     "id": "vector_db",
+     "name": "Hosted vector database (for example Pinecone)",
+     "kind": "paid",
+     "supported_in_deskfern": "Not built. Deskfern uses a hashed word vector stand in",
+     "run": "not run",
+     "sources": [
+      {
+       "url": "https://docs.pinecone.io/",
+       "checked": "not fetched"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 85,
+       "evidence": "Meaning based search finds pages that share no words with the question, which is the weakness measured in this repo."
+      },
+      "setup": {
+       "score": 55,
+       "evidence": "Needs an account, an index and a way to make embeddings."
+      },
+      "reliability": {
+       "score": 85,
+       "evidence": "Managed service. This is a judgement, not a measurement."
+      },
+      "cost": {
+       "score": 40,
+       "evidence": "Usage priced. Not read today."
+      },
+      "data": {
+       "score": 40,
+       "evidence": "Documents and vectors leave your server."
+      },
+      "integration": {
+       "score": 0,
+       "evidence": "No adapter exists in Deskfern."
+      }
+     }
+    },
+    {
+     "id": "sqlite_fts",
+     "name": "SQLite full text (FTS5)",
+     "kind": "open_source",
+     "supported_in_deskfern": "Built and tested",
+     "run": "run in the tests and the demo",
+     "sources": [
+      {
+       "url": "https://www.sqlite.org/fts5.html",
+       "checked": "2026-11-23 (BM25 and MATCH used as documented)"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 60,
+       "evidence": "Word matching with ranking. Misses questions that use other words than the page, as the held out set shows."
+      },
+      "setup": {
+       "score": 95,
+       "evidence": "Ships inside Python, nothing to install."
+      },
+      "reliability": {
+       "score": 90,
+       "evidence": "Very stable, runs in one file."
+      },
+      "cost": {
+       "score": 100,
+       "evidence": "Free. This is a judgement, not a measurement."
+      },
+      "data": {
+       "score": 100,
+       "evidence": "Data stays in your database file."
+      },
+      "integration": {
+       "score": 100,
+       "evidence": "Used directly, with a rebuild step."
+      }
+     }
+    },
+    {
+     "id": "postgres_fts",
+     "name": "Postgres full text",
+     "kind": "open_source",
+     "supported_in_deskfern": "Built, SQL path exercised in a throwaway Postgres 17",
+     "run": "run in a local test",
+     "sources": [
+      {
+       "url": "https://www.postgresql.org/docs/current/textsearch.html",
+       "checked": "2026-11-23"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 60,
+       "evidence": "Same word matching idea as SQLite, with stemming rules of its own."
+      },
+      "setup": {
+       "score": 80,
+       "evidence": "Already there when the client runs Postgres."
+      },
+      "reliability": {
+       "score": 90,
+       "evidence": "Stable and widely run. This is a judgement, not a measurement."
+      },
+      "cost": {
+       "score": 100,
+       "evidence": "Free. This is a judgement, not a measurement."
+      },
+      "data": {
+       "score": 100,
+       "evidence": "Stays in your database. This is a judgement, not a measurement."
+      },
+      "integration": {
+       "score": 90,
+       "evidence": "Deskfern stores stems and queries them with to_tsvector."
+      }
+     }
+    },
+    {
+     "id": "pgvector",
+     "name": "pgvector (Postgres extension)",
+     "kind": "open_source",
+     "supported_in_deskfern": "Not built. Not installed in the local Postgres used here",
+     "run": "not run",
+     "sources": [
+      {
+       "url": "https://github.com/pgvector/pgvector",
+       "checked": "not fetched"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 80,
+       "evidence": "Would allow meaning based search inside Postgres if embeddings are produced elsewhere."
+      },
+      "setup": {
+       "score": 50,
+       "evidence": "Needs the extension on the host. Not present in the local Postgres 17 used for tests, and host support is UNVERIFIED."
+      },
+      "reliability": {
+       "score": 75,
+       "evidence": "Well known extension. This is a judgement, not a measurement."
+      },
+      "cost": {
+       "score": 95,
+       "evidence": "Free, plus embedding costs."
+      },
+      "data": {
+       "score": 100,
+       "evidence": "Stays in your database. This is a judgement, not a measurement."
+      },
+      "integration": {
+       "score": 0,
+       "evidence": "No adapter exists in Deskfern."
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "payments",
+   "job": "Refunds (the only money movement)",
+   "reference": "stripe",
+   "recommendation": {
+    "beginner": "If the client takes cards with Stripe, use it. Keep MODE=draft until a person has approved a test refund in Stripe's test mode.",
+    "implementer": "Stripe is the only refund adapter. It is tested only against a stand in. Use a restricted key that can write refunds only, and keep the approval step on.",
+    "cost_sensitive": "Refunds themselves are a normal part of the card processor's pricing. Check the current price page yourself.",
+    "open_source_when": "There is no open source way to refund a card payment. For other processors write an adapter from the recipe prompt."
+   },
+   "tools": [
+    {
+     "id": "stripe",
+     "name": "Stripe refunds",
+     "kind": "paid",
+     "supported_in_deskfern": "Adapter tested against a stand in",
+     "run": "not run against Stripe",
+     "sources": [
+      {
+       "url": "https://docs.stripe.com/api/refunds/create",
+       "checked": "2026-11-23 (endpoint, parameters and idempotency read)"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 85,
+       "evidence": "Create refund call matches what Deskfern needs: a charge, an amount, a reason and metadata."
+      },
+      "setup": {
+       "score": 70,
+       "evidence": "Needs a secret or restricted key. Test mode makes a safe first run."
+      },
+      "reliability": {
+       "score": 90,
+       "evidence": "Widely used and well documented."
+      },
+      "cost": {
+       "score": 60,
+       "evidence": "Priced as part of the processor. Not read today."
+      },
+      "data": {
+       "score": 60,
+       "evidence": "Payment data stays with Stripe, Deskfern stores only a charge id."
+      },
+      "integration": {
+       "score": 80,
+       "evidence": "Adapter sends an idempotency key so a retry cannot pay twice. Not run live."
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "sources",
+   "job": "Where the knowledge lives",
+   "reference": "gdrive",
+   "recommendation": {
+    "beginner": "Start with a folder of Markdown or PDF files. It needs no account and is the best tested source.",
+    "implementer": "Use the folder source for anything you can export. Drive and Notion adapters are read only and written from memory, test each against the client's own workspace first.",
+    "cost_sensitive": "A folder costs nothing. Drive and Notion are usually already paid for by the client.",
+    "open_source_when": "A plain folder (or a Git repo of Markdown) is the right call when the client wants control and a clean history. Use Drive or Notion when staff already write the help pages there."
+   },
+   "tools": [
+    {
+     "id": "gdrive",
+     "name": "Google Drive",
+     "kind": "paid",
+     "supported_in_deskfern": "Read only adapter tested against a stand in",
+     "run": "not run against Google",
+     "sources": [
+      {
+       "url": "https://developers.google.com/drive/api",
+       "checked": "not fetched"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 70,
+       "evidence": "Many teams keep policies as Google Docs. Deskfern exports a document as plain text."
+      },
+      "setup": {
+       "score": 50,
+       "evidence": "Needs an OAuth token with read only scope. The sign in steps are not covered by the adapter."
+      },
+      "reliability": {
+       "score": 85,
+       "evidence": "Reliable. This is a judgement, not a measurement."
+      },
+      "cost": {
+       "score": 80,
+       "evidence": "Usually already paid for."
+      },
+      "data": {
+       "score": 45,
+       "evidence": "Documents stay with Google, Deskfern stores a copy of the text."
+      },
+      "integration": {
+       "score": 50,
+       "evidence": "Lists documents and exports text. Written from memory, not run."
+      }
+     }
+    },
+    {
+     "id": "notion",
+     "name": "Notion",
+     "kind": "paid",
+     "supported_in_deskfern": "Read only adapter tested against a stand in",
+     "run": "not run against Notion",
+     "sources": [
+      {
+       "url": "https://developers.notion.com/",
+       "checked": "not fetched"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 70,
+       "evidence": "Common home for help pages. Blocks are read as paragraphs, tables and embeds are not."
+      },
+      "setup": {
+       "score": 55,
+       "evidence": "Needs an internal integration token and pages shared with it."
+      },
+      "reliability": {
+       "score": 80,
+       "evidence": "Reliable, with rate limits."
+      },
+      "cost": {
+       "score": 75,
+       "evidence": "Usually already paid for."
+      },
+      "data": {
+       "score": 45,
+       "evidence": "Pages stay with Notion, Deskfern stores a copy."
+      },
+      "integration": {
+       "score": 45,
+       "evidence": "Searches pages and reads block text. Written from memory, not run."
+      }
+     }
+    },
+    {
+     "id": "folder",
+     "name": "Local folder (Markdown, text, PDF)",
+     "kind": "open_source",
+     "supported_in_deskfern": "Built and tested",
+     "run": "run in the tests and the demo",
+     "sources": [
+      {
+       "url": "https://pypi.org/project/pypdf/",
+       "checked": "2026-11-23 (library used for PDFs)"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 75,
+       "evidence": "Covers the common case: exported help pages and policy PDFs. PDFs with scanned images are not read."
+      },
+      "setup": {
+       "score": 95,
+       "evidence": "Point it at a folder. This is a judgement, not a measurement."
+      },
+      "reliability": {
+       "score": 90,
+       "evidence": "Plain files, easy to back up and review."
+      },
+      "cost": {
+       "score": 100,
+       "evidence": "Free. This is a judgement, not a measurement."
+      },
+      "data": {
+       "score": 100,
+       "evidence": "Everything stays on your server."
+      },
+      "integration": {
+       "score": 100,
+       "evidence": "Built into Deskfern, skips links that point outside the folder and files over 10 MB."
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "answerer",
+   "job": "Who writes the answer sentences",
+   "reference": "anthropic",
+   "recommendation": {
+    "beginner": "Use the offline rules writer to try the product. It copies sentences from your pages, which is dull but never invents anything.",
+    "implementer": "Measure before you switch: run the held out questions and the test cases with the model writer in a test account, and keep the groundedness check on whatever writes the words.",
+    "cost_sensitive": "The offline writer costs nothing. A model writer costs per use. Read the price page yourself.",
+    "open_source_when": "There is no open source model scored here. Self hosted models are possible but were not tried."
+   },
+   "tools": [
+    {
+     "id": "anthropic",
+     "name": "Language model (Anthropic API)",
+     "kind": "paid",
+     "supported_in_deskfern": "Plug in written against the base wrapper, never run",
+     "run": "not run",
+     "sources": [
+      {
+       "url": "https://docs.anthropic.com/",
+       "checked": "not fetched"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 90,
+       "evidence": "Can phrase one answer from several pages and handle other wording and languages, which the offline writer cannot."
+      },
+      "setup": {
+       "score": 60,
+       "evidence": "Needs an API key. This is a judgement, not a measurement."
+      },
+      "reliability": {
+       "score": 85,
+       "evidence": "Hosted service with limits."
+      },
+      "cost": {
+       "score": 50,
+       "evidence": "Priced per token. Not read today."
+      },
+      "data": {
+       "score": 50,
+       "evidence": "Ticket text leaves the server, wrapped as untrusted data."
+      },
+      "integration": {
+       "score": 40,
+       "evidence": "The writer interface exists and the groundedness check judges its output. Never run live."
+      }
+     }
+    },
+    {
+     "id": "offline_rules",
+     "name": "Offline rules writer (built in)",
+     "kind": "open_source",
+     "supported_in_deskfern": "Built and tested",
+     "run": "run in the tests and the demo",
+     "sources": [
+      {
+       "url": "data/eval/heldout_first_run.json",
+       "checked": "2026-11-23 (our own first run numbers)"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 40,
+       "evidence": "Copies the best source sentences. First run on the held out set: see docs/ANSWER-EVAL.md, it is weak on different wording."
+      },
+      "setup": {
+       "score": 100,
+       "evidence": "Nothing to set up. This is a judgement, not a measurement."
+      },
+      "reliability": {
+       "score": 95,
+       "evidence": "Deterministic, same input same output."
+      },
+      "cost": {
+       "score": 100,
+       "evidence": "Free. This is a judgement, not a measurement."
+      },
+      "data": {
+       "score": 100,
+       "evidence": "Nothing leaves the server."
+      },
+      "integration": {
+       "score": 100,
+       "evidence": "Built in. This is a judgement, not a measurement."
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "hosting",
+   "job": "Where Deskfern runs",
+   "reference": "railway",
+   "recommendation": {
+    "beginner": "Vercel for the web part and Railway for the API and worker is the least work.",
+    "implementer": "Hetzner with Docker Compose when you run several clients and want one bill and full control. Keep the web on Vercel if you like preview deploys.",
+    "cost_sensitive": "A small Hetzner server is the cheapest for the API. Check current prices yourself.",
+    "open_source_when": "Self hosting is the right call when data must stay in one place you control. It costs your time for updates and backups."
+   },
+   "tools": [
+    {
+     "id": "railway",
+     "name": "Railway",
+     "kind": "paid",
+     "supported_in_deskfern": "Config written, not deployed",
+     "run": "not run",
+     "sources": [
+      {
+       "url": "https://docs.railway.com/",
+       "checked": "not fetched"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 80,
+       "evidence": "Runs the API and the worker from one repo with a Postgres add on."
+      },
+      "setup": {
+       "score": 85,
+       "evidence": "Connect the repo and set variables."
+      },
+      "reliability": {
+       "score": 80,
+       "evidence": "Managed platform. This is a judgement, not a measurement."
+      },
+      "cost": {
+       "score": 65,
+       "evidence": "Usage priced. Not read today."
+      },
+      "data": {
+       "score": 55,
+       "evidence": "Vendor hosted. This is a judgement, not a measurement."
+      },
+      "integration": {
+       "score": 70,
+       "evidence": "Dockerfiles and a railway.json are in the repo. Not deployed."
+      }
+     }
+    },
+    {
+     "id": "vercel",
+     "name": "Vercel",
+     "kind": "paid",
+     "supported_in_deskfern": "Web app config written, not deployed",
+     "run": "not run",
+     "sources": [
+      {
+       "url": "https://vercel.com/docs/monorepos",
+       "checked": "2026-11-23 (root directory setting for a monorepo)"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 80,
+       "evidence": "Hosts the Next.js web app only. The API must run elsewhere."
+      },
+      "setup": {
+       "score": 90,
+       "evidence": "Import the repo and set the root directory to apps/web."
+      },
+      "reliability": {
+       "score": 85,
+       "evidence": "Managed platform. This is a judgement, not a measurement."
+      },
+      "cost": {
+       "score": 65,
+       "evidence": "Free and paid tiers. Not read today."
+      },
+      "data": {
+       "score": 55,
+       "evidence": "Vendor hosted. This is a judgement, not a measurement."
+      },
+      "integration": {
+       "score": 75,
+       "evidence": "Needs API_BASE_URL and SESSION_SECRET. Not deployed."
+      }
+     }
+    },
+    {
+     "id": "hetzner",
+     "name": "Hetzner VPS with Docker Compose",
+     "kind": "paid",
+     "supported_in_deskfern": "Compose, Caddy and cloud init written, not deployed",
+     "run": "not run",
+     "sources": [
+      {
+       "url": "https://docs.hetzner.com/",
+       "checked": "not fetched"
+      }
+     ],
+     "scores": {
+      "fit": {
+       "score": 85,
+       "evidence": "Runs everything in one place, including Postgres and automatic HTTPS through Caddy."
+      },
+      "setup": {
+       "score": 50,
+       "evidence": "You manage the server, firewall and updates."
+      },
+      "reliability": {
+       "score": 80,
+       "evidence": "As reliable as you keep it."
+      },
+      "cost": {
+       "score": 90,
+       "evidence": "Among the cheapest options in general. Not read today."
+      },
+      "data": {
+       "score": 85,
+       "evidence": "You choose the region and hold the data."
+      },
+      "integration": {
+       "score": 75,
+       "evidence": "Compose file, Caddyfile, backup script and cloud init are in the repo. Not run."
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "unscored_named": [
+  {
+   "name": "Gmail and Outlook mailboxes",
+   "why": "Work through the generic IMAP adapter only if the account allows it. Not tested."
+  },
+  {
+   "name": "Other help desks and processors",
+   "why": "No adapter. Use the recipe prompts to have Claude Code or Codex write one."
+  }
+ ]
+}

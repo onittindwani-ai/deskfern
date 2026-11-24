@@ -1,0 +1,7 @@
+{
+  "text": "{\"sentences\": [{\"text\": \"Workspaces store data in the United States by default.\", \"passage_ids\": [30]}, {\"text\": \"Business workspaces can choose the European Union when they are created.\", \"passage_ids\": [30]}], \"confidence\": 70, \"cannot_answer\": false}",
+  "input_tokens": 150,
+  "output_tokens": 40,
+  "model": "claude-sonnet-5-5",
+  "prompt_preview": "[task:write_answer]\nWrite the reply sentences for the ticket in the first data block. Use only the pages in the second data block.\nKEY_WORDS: [[\"stor\", 3.2], [\""
+}

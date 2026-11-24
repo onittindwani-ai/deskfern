@@ -1,0 +1,1598 @@
+[
+ {
+  "id": "AG-001",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Growth costs $89 per month and includes 1,000 labels per month."
+  ],
+  "reply_sentence": "The Growth plan costs $89 per month and includes 1,000 labels.",
+  "label": "supported",
+  "support_page": "getting-started",
+  "trap_type": "none",
+  "reason": "Exact facts."
+ },
+ {
+  "id": "AG-002",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Growth costs $89 per month and includes 1,000 labels per month."
+  ],
+  "reply_sentence": "The Growth plan costs $98 per month and includes 1,000 labels.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "Price is $89, not $98."
+ },
+ {
+  "id": "AG-003",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Growth costs $89 per month and includes 1,000 labels per month."
+  ],
+  "reply_sentence": "The Growth plan costs $89 per year and includes 1,000 labels.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "Price is per month, not per year."
+ },
+ {
+  "id": "AG-004",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Growth costs $89 per month and includes 1,000 labels per month."
+  ],
+  "reply_sentence": "The Growth plan includes 800 labels per month.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "stale_info",
+  "reason": "800 was the old allowance; page says 1,000."
+ },
+ {
+  "id": "AG-005",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Starter costs $29 per month and includes 150 labels per month."
+  ],
+  "reply_sentence": "Starter costs $29 per month and includes 150 labels.",
+  "label": "supported",
+  "support_page": "getting-started",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "AG-006",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Starter costs $29 per month and includes 150 labels per month."
+  ],
+  "reply_sentence": "Scale costs $29 per month and includes 150 labels.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Those are Starter figures."
+ },
+ {
+  "id": "AG-007",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Labels beyond the monthly allowance are billed at $0.12 each on Starter, $0.09 each on Growth and $0.07 each on Scale."
+  ],
+  "reply_sentence": "On Scale each extra label costs $0.07.",
+  "label": "supported",
+  "support_page": "getting-started",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-008",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Labels beyond the monthly allowance are billed at $0.12 each on Starter, $0.09 each on Growth and $0.07 each on Scale."
+  ],
+  "reply_sentence": "On Growth each extra label costs $0.12.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "$0.12 is Starter; Growth is $0.09."
+ },
+ {
+  "id": "AG-009",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Unused labels do not roll over to the next month."
+  ],
+  "reply_sentence": "Unused labels roll over to the next month.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Page says they do not roll over."
+ },
+ {
+  "id": "AG-010",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Unused labels do not roll over to the next month."
+  ],
+  "reply_sentence": "Labels you do not use this month are lost at month end.",
+  "label": "supported",
+  "support_page": "getting-started",
+  "trap_type": "none",
+  "reason": "Same meaning."
+ },
+ {
+  "id": "AG-011",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "No payment card is needed to start the trial."
+  ],
+  "reply_sentence": "You can start the trial without entering a payment card.",
+  "label": "supported",
+  "support_page": "getting-started",
+  "trap_type": "none",
+  "reason": "Same meaning."
+ },
+ {
+  "id": "AG-012",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "No payment card is needed to start the trial."
+  ],
+  "reply_sentence": "A payment card is needed to start the trial.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Flipped."
+ },
+ {
+  "id": "AG-013",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Every new account gets a 14 day free trial."
+  ],
+  "reply_sentence": "Every new account gets a 30 day free trial.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "Trial is 14 days."
+ },
+ {
+  "id": "AG-014",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Trial accounts can create up to 20 labels."
+  ],
+  "reply_sentence": "Trial accounts can create unlimited labels for the first week.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Cap is 20 labels."
+ },
+ {
+  "id": "AG-015",
+  "cited_pages": [
+   "getting-started"
+  ],
+  "cited_passages": [
+   "Every new account gets a 14 day free trial."
+  ],
+  "reply_sentence": "Parcelpath offers a 25 percent discount for the first three months.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "invented_detail",
+  "reason": "No discount in the pages."
+ },
+ {
+  "id": "AG-016",
+  "cited_pages": [
+   "carriers"
+  ],
+  "cited_passages": [
+   "Kestrel Freight ships within the United States only."
+  ],
+  "reply_sentence": "Kestrel Freight can ship to Canada.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "US only."
+ },
+ {
+  "id": "AG-017",
+  "cited_pages": [
+   "carriers"
+  ],
+  "cited_passages": [
+   "International shipping is available with Northline Post and Brightway Express only."
+  ],
+  "reply_sentence": "International shipping works with Northline Post and Brightway Express.",
+  "label": "supported",
+  "support_page": "carriers",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-018",
+  "cited_pages": [
+   "carriers"
+  ],
+  "cited_passages": [
+   "International shipping is available with Northline Post and Brightway Express only."
+  ],
+  "reply_sentence": "International shipping works with all three carriers.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Kestrel is excluded."
+ },
+ {
+  "id": "AG-019",
+  "cited_pages": [
+   "carriers"
+  ],
+  "cited_passages": [
+   "Brightway Express accepts parcels up to 25 kg."
+  ],
+  "reply_sentence": "Brightway Express accepts parcels up to 25 kg.",
+  "label": "supported",
+  "support_page": "carriers",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "AG-020",
+  "cited_pages": [
+   "carriers"
+  ],
+  "cited_passages": [
+   "Brightway Express accepts parcels up to 25 kg."
+  ],
+  "reply_sentence": "Brightway Express accepts parcels up to 30 kg.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "30 kg is Northline Post."
+ },
+ {
+  "id": "AG-021",
+  "cited_pages": [
+   "carriers"
+  ],
+  "cited_passages": [
+   "Brightway Express accepts parcels up to 25 kg."
+  ],
+  "reply_sentence": "Brightway Express accepts parcels up to 25 pounds.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "kg, not pounds."
+ },
+ {
+  "id": "AG-022",
+  "cited_pages": [
+   "carriers"
+  ],
+  "cited_passages": [
+   "Brightway Express cannot deliver to PO boxes. Northline Post can deliver to PO boxes."
+  ],
+  "reply_sentence": "Northline Post can deliver to PO boxes, but Brightway Express cannot.",
+  "label": "supported",
+  "support_page": "carriers",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-023",
+  "cited_pages": [
+   "carriers"
+  ],
+  "cited_passages": [
+   "You connect a carrier by pasting its API key under Settings, then Carriers."
+  ],
+  "reply_sentence": "Northline Post was founded in 1994 and is the largest carrier in the region.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "true_not_in_pages",
+  "reason": "Not in the pages; may be true or false."
+ },
+ {
+  "id": "AG-024",
+  "cited_pages": [
+   "carriers"
+  ],
+  "cited_passages": [
+   "Kestrel Freight handles pallets and parcels from 30 kg up to 1,000 kg."
+  ],
+  "reply_sentence": "Kestrel Freight handles loads from 30 kg up to 1,000 kg.",
+  "label": "supported",
+  "support_page": "carriers",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-025",
+  "cited_pages": [
+   "carriers"
+  ],
+  "cited_passages": [
+   "Kestrel Freight handles pallets and parcels from 30 kg up to 1,000 kg."
+  ],
+  "reply_sentence": "Kestrel Freight handles loads of any weight.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Capped at 1,000 kg."
+ },
+ {
+  "id": "AG-026",
+  "cited_pages": [
+   "label-printing"
+  ],
+  "cited_passages": [
+   "The Dymo 450 is not supported."
+  ],
+  "reply_sentence": "The Dymo 450 is supported.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Not supported."
+ },
+ {
+  "id": "AG-027",
+  "cited_pages": [
+   "label-printing"
+  ],
+  "cited_passages": [
+   "Parcelpath supports Zebra ZD series thermal printers and the Dymo 550."
+  ],
+  "reply_sentence": "Zebra ZD series printers and the Dymo 550 are supported.",
+  "label": "supported",
+  "support_page": "label-printing",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-028",
+  "cited_pages": [
+   "label-printing"
+  ],
+  "cited_passages": [
+   "An A4 sheet holds 4 labels."
+  ],
+  "reply_sentence": "An A4 sheet holds 6 labels.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "4 labels."
+ },
+ {
+  "id": "AG-029",
+  "cited_pages": [
+   "label-printing"
+  ],
+  "cited_passages": [
+   "A label can be voided within 30 days of purchase if the carrier has not scanned it."
+  ],
+  "reply_sentence": "A label can be voided within 30 days if the carrier has not scanned it.",
+  "label": "supported",
+  "support_page": "label-printing",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-030",
+  "cited_pages": [
+   "label-printing"
+  ],
+  "cited_passages": [
+   "A label can be voided within 30 days of purchase if the carrier has not scanned it."
+  ],
+  "reply_sentence": "A label can be voided at any time before delivery.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "30 days and unscanned only."
+ },
+ {
+  "id": "AG-031",
+  "cited_pages": [
+   "label-printing"
+  ],
+  "cited_passages": [
+   "A voided label is credited back to your label allowance within 7 business days. Voiding never returns cash."
+  ],
+  "reply_sentence": "Voiding a label returns the money to your card.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Never returns cash."
+ },
+ {
+  "id": "AG-032",
+  "cited_pages": [
+   "label-printing"
+  ],
+  "cited_passages": [
+   "A voided label is credited back to your label allowance within 7 business days. Voiding never returns cash."
+  ],
+  "reply_sentence": "A voided label is credited back within 7 days.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "7 business days, not calendar days; also omits that it is label allowance credit. Treated as unsupported by unit."
+ },
+ {
+  "id": "AG-033",
+  "cited_pages": [
+   "label-printing"
+  ],
+  "cited_passages": [
+   "Dymo 550 support was added on 2026-02-10."
+  ],
+  "reply_sentence": "Dymo 550 support was added in February 2026.",
+  "label": "supported",
+  "support_page": "label-printing",
+  "trap_type": "none",
+  "reason": "Consistent with 2026-02-10."
+ },
+ {
+  "id": "AG-034",
+  "cited_pages": [
+   "refund-policy"
+  ],
+  "cited_passages": [
+   "If you ask within 30 days of your first charge, we refund that first charge in full."
+  ],
+  "reply_sentence": "A first monthly charge can be refunded in full if you ask within 30 days.",
+  "label": "supported",
+  "support_page": "refund-policy",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-035",
+  "cited_pages": [
+   "refund-policy"
+  ],
+  "cited_passages": [
+   "If you ask within 30 days of your first charge, we refund that first charge in full."
+  ],
+  "reply_sentence": "You can ask for a refund within 14 days of your first charge.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "stale_info",
+  "reason": "14 days was the old policy."
+ },
+ {
+  "id": "AG-036",
+  "cited_pages": [
+   "refund-policy"
+  ],
+  "cited_passages": [
+   "Annual plans can be refunded in full within 14 days of purchase."
+  ],
+  "reply_sentence": "Annual plans can be refunded in full within 14 days of purchase.",
+  "label": "supported",
+  "support_page": "refund-policy",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "AG-037",
+  "cited_pages": [
+   "refund-policy"
+  ],
+  "cited_passages": [
+   "Annual plans can be refunded in full within 14 days of purchase."
+  ],
+  "reply_sentence": "Annual plans get a prorated refund for unused months in the first 60 days.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "stale_info",
+  "reason": "Removed in the new policy; only the archived page mentions it."
+ },
+ {
+  "id": "AG-038",
+  "cited_pages": [
+   "refund-policy"
+  ],
+  "cited_passages": [
+   "Charges for labels beyond the plan allowance are never refunded."
+  ],
+  "reply_sentence": "Extra label charges can be refunded on request.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Never refunded."
+ },
+ {
+  "id": "AG-039",
+  "cited_pages": [
+   "refund-policy"
+  ],
+  "cited_passages": [
+   "Every refund must be approved by a member of the billing team. Support agents cannot issue refunds."
+  ],
+  "reply_sentence": "Support agents can issue a refund right away.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "They cannot."
+ },
+ {
+  "id": "AG-040",
+  "cited_pages": [
+   "refund-policy"
+  ],
+  "cited_passages": [
+   "Every refund must be approved by a member of the billing team. Support agents cannot issue refunds."
+  ],
+  "reply_sentence": "A refund needs approval from the billing team before it is issued.",
+  "label": "supported",
+  "support_page": "refund-policy",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-041",
+  "cited_pages": [
+   "refund-policy"
+  ],
+  "cited_passages": [
+   "Approved refunds go back to the original payment card within 5 to 10 business days."
+  ],
+  "reply_sentence": "Approved refunds reach your card within 5 to 10 business days.",
+  "label": "supported",
+  "support_page": "refund-policy",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-042",
+  "cited_pages": [
+   "refund-policy"
+  ],
+  "cited_passages": [
+   "Approved refunds go back to the original payment card within 5 to 10 business days."
+  ],
+  "reply_sentence": "Approved refunds are paid out in cash or store credit.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "invented_detail",
+  "reason": "Original card only."
+ },
+ {
+  "id": "AG-043",
+  "cited_pages": [
+   "refund-policy"
+  ],
+  "cited_passages": [
+   "Approved refunds go back to the original payment card within 5 to 10 business days."
+  ],
+  "reply_sentence": "Your refund will arrive within 5 to 10 hours.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "Business days, not hours."
+ },
+ {
+  "id": "AG-044",
+  "cited_pages": [
+   "refund-policy-2025-archived"
+  ],
+  "cited_passages": [
+   "ARCHIVED. This page applied until 2026-02-28 and was replaced on 2026-03-01. Do not use it for new requests."
+  ],
+  "reply_sentence": "The refund window for monthly plans was 14 days until 2026-02-28.",
+  "label": "supported",
+  "support_page": "refund-policy-2025-archived",
+  "trap_type": "none",
+  "reason": "Historical statement supported by archive page."
+ },
+ {
+  "id": "AG-045",
+  "cited_pages": [
+   "refund-policy-2025-archived"
+  ],
+  "cited_passages": [
+   "Under the old policy, the first charge of any plan, monthly or annual, could be refunded within 14 days."
+  ],
+  "reply_sentence": "Our current refund window is 14 days for every plan.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "stale_info",
+  "reason": "That was the old policy."
+ },
+ {
+  "id": "AG-046",
+  "cited_pages": [
+   "cancellation"
+  ],
+  "cited_passages": [
+   "Only the account owner can cancel. Go to Settings, then Billing, then Cancel plan."
+  ],
+  "reply_sentence": "Any admin can cancel the account.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Only the owner."
+ },
+ {
+  "id": "AG-047",
+  "cited_pages": [
+   "cancellation"
+  ],
+  "cited_passages": [
+   "After cancellation, your data is kept for 90 days and then permanently deleted."
+  ],
+  "reply_sentence": "Your data is kept for 90 days after cancellation and then permanently deleted.",
+  "label": "supported",
+  "support_page": "cancellation",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-048",
+  "cited_pages": [
+   "cancellation"
+  ],
+  "cited_passages": [
+   "After cancellation, your data is kept for 90 days and then permanently deleted."
+  ],
+  "reply_sentence": "Your data is kept for 180 days after cancellation.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "90 days."
+ },
+ {
+  "id": "AG-049",
+  "cited_pages": [
+   "cancellation"
+  ],
+  "cited_passages": [
+   "Your plan stays active until the end of the paid period."
+  ],
+  "reply_sentence": "Your plan stops immediately when you cancel.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Stays active until period end."
+ },
+ {
+  "id": "AG-050",
+  "cited_pages": [
+   "cancellation"
+  ],
+  "cited_passages": [
+   "You can export your shipments as a CSV file at any time during those 90 days."
+  ],
+  "reply_sentence": "You can export your shipments as a CSV file during the 90 days after cancelling.",
+  "label": "supported",
+  "support_page": "cancellation",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-051",
+  "cited_pages": [
+   "address-validation"
+  ],
+  "cited_passages": [
+   "Parcelpath validates addresses in 38 countries."
+  ],
+  "reply_sentence": "Parcelpath validates addresses in 83 countries.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "38 countries."
+ },
+ {
+  "id": "AG-052",
+  "cited_pages": [
+   "address-validation"
+  ],
+  "cited_passages": [
+   "It never changes an address without your confirmation."
+  ],
+  "reply_sentence": "Parcelpath automatically fixes wrong postal codes without asking.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "It asks for confirmation."
+ },
+ {
+  "id": "AG-053",
+  "cited_pages": [
+   "address-validation"
+  ],
+  "cited_passages": [
+   "Address validation is included on all plans."
+  ],
+  "reply_sentence": "Address validation is only on paid plans above Starter.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_plan",
+  "reason": "Included on all plans."
+ },
+ {
+  "id": "AG-054",
+  "cited_pages": [
+   "returns-portal"
+  ],
+  "cited_passages": [
+   "The returns portal is available on Growth and Scale. Starter does not include it."
+  ],
+  "reply_sentence": "Starter customers have access to the returns portal.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_plan",
+  "reason": "Not on Starter."
+ },
+ {
+  "id": "AG-055",
+  "cited_pages": [
+   "returns-portal"
+  ],
+  "cited_passages": [
+   "The return window defaults to 30 days and can be set between 7 and 90 days."
+  ],
+  "reply_sentence": "You can set the return window anywhere from 7 to 90 days.",
+  "label": "supported",
+  "support_page": "returns-portal",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-056",
+  "cited_pages": [
+   "returns-portal"
+  ],
+  "cited_passages": [
+   "The return window defaults to 30 days and can be set between 7 and 90 days."
+  ],
+  "reply_sentence": "You can set the return window up to 120 days.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "Max is 90."
+ },
+ {
+  "id": "AG-057",
+  "cited_pages": [
+   "returns-portal"
+  ],
+  "cited_passages": [
+   "Return labels are billed to the merchant at the carrier rate plus a $0.25 fee per label."
+  ],
+  "reply_sentence": "Shoppers are billed the carrier rate plus $0.25 for each return label.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Billed to the merchant, not shoppers."
+ },
+ {
+  "id": "AG-058",
+  "cited_pages": [
+   "returns-portal"
+  ],
+  "cited_passages": [
+   "Shoppers do not need a Parcelpath account to start a return."
+  ],
+  "reply_sentence": "Shoppers can start a return without a Parcelpath account.",
+  "label": "supported",
+  "support_page": "returns-portal",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-059",
+  "cited_pages": [
+   "api"
+  ],
+  "cited_passages": [
+   "Each API key can make 120 requests per minute."
+  ],
+  "reply_sentence": "Each API key can make 120 requests per minute.",
+  "label": "supported",
+  "support_page": "api",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "AG-060",
+  "cited_pages": [
+   "api"
+  ],
+  "cited_passages": [
+   "Each API key can make 120 requests per minute. This was raised from 60 requests per minute on 2026-01-12."
+  ],
+  "reply_sentence": "The limit is 60 requests per minute.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "stale_info",
+  "reason": "Old limit."
+ },
+ {
+  "id": "AG-061",
+  "cited_pages": [
+   "api"
+  ],
+  "cited_passages": [
+   "Requests over the limit receive HTTP 429 with a Retry-After header."
+  ],
+  "reply_sentence": "Requests over the limit are queued and delivered later.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "invented_detail",
+  "reason": "They receive 429."
+ },
+ {
+  "id": "AG-062",
+  "cited_pages": [
+   "api"
+  ],
+  "cited_passages": [
+   "Failed webhook deliveries are retried 5 times over 24 hours."
+  ],
+  "reply_sentence": "Failed webhooks are retried 5 times over 24 hours.",
+  "label": "supported",
+  "support_page": "api",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-063",
+  "cited_pages": [
+   "api"
+  ],
+  "cited_passages": [
+   "Failed webhook deliveries are retried 5 times over 24 hours."
+  ],
+  "reply_sentence": "Failed webhooks are retried 5 times over 24 minutes.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "24 hours."
+ },
+ {
+  "id": "AG-064",
+  "cited_pages": [
+   "api"
+  ],
+  "cited_passages": [
+   "An API key is shown only once, when you create it."
+  ],
+  "reply_sentence": "You can view your API key again at any time in Settings.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Shown only once."
+ },
+ {
+  "id": "AG-065",
+  "cited_pages": [
+   "api"
+  ],
+  "cited_passages": [
+   "Each account can have up to 10 active API keys."
+  ],
+  "reply_sentence": "Each account can have up to 10 active API keys.",
+  "label": "supported",
+  "support_page": "api",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "AG-066",
+  "cited_pages": [
+   "api"
+  ],
+  "cited_passages": [
+   "Each account can have up to 10 active API keys."
+  ],
+  "reply_sentence": "Each key can be restricted to one IP address.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "true_not_in_pages",
+  "reason": "Not in the pages."
+ },
+ {
+  "id": "AG-067",
+  "cited_pages": [
+   "integrations"
+  ],
+  "cited_passages": [
+   "Etsy orders sync every 15 minutes. Etsy used to sync every 30 minutes before 2026-05-20."
+  ],
+  "reply_sentence": "Etsy orders sync every 15 minutes.",
+  "label": "supported",
+  "support_page": "integrations",
+  "trap_type": "none",
+  "reason": "Current value."
+ },
+ {
+  "id": "AG-068",
+  "cited_pages": [
+   "integrations"
+  ],
+  "cited_passages": [
+   "Etsy orders sync every 15 minutes. Etsy used to sync every 30 minutes before 2026-05-20."
+  ],
+  "reply_sentence": "Etsy orders sync every 30 minutes.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "stale_info",
+  "reason": "Old interval."
+ },
+ {
+  "id": "AG-069",
+  "cited_pages": [
+   "integrations"
+  ],
+  "cited_passages": [
+   "Shopify orders sync in real time."
+  ],
+  "reply_sentence": "Shopify orders sync every 5 minutes.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "5 minutes is WooCommerce."
+ },
+ {
+  "id": "AG-070",
+  "cited_pages": [
+   "integrations"
+  ],
+  "cited_passages": [
+   "Amazon and eBay are not supported. BigCommerce is on the roadmap but has no release date."
+  ],
+  "reply_sentence": "BigCommerce will be released next quarter.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "No release date given."
+ },
+ {
+  "id": "AG-071",
+  "cited_pages": [
+   "security"
+  ],
+  "cited_passages": [
+   "Two factor sign in with an authenticator app is available on all plans, and an admin can require it for every team member."
+  ],
+  "reply_sentence": "An admin can require two factor sign in for every team member.",
+  "label": "supported",
+  "support_page": "security",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-072",
+  "cited_pages": [
+   "security"
+  ],
+  "cited_passages": [
+   "SMS codes are not offered."
+  ],
+  "reply_sentence": "You can receive two factor codes by SMS.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Not offered."
+ },
+ {
+  "id": "AG-073",
+  "cited_pages": [
+   "security"
+  ],
+  "cited_passages": [
+   "Single sign on (SAML) is available on Scale only."
+  ],
+  "reply_sentence": "Single sign on is available on Growth and Scale.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_plan",
+  "reason": "Scale only."
+ },
+ {
+  "id": "AG-074",
+  "cited_pages": [
+   "security"
+  ],
+  "cited_passages": [
+   "The region cannot be changed afterwards."
+  ],
+  "reply_sentence": "Support can move your data to another region on request.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Cannot be changed."
+ },
+ {
+  "id": "AG-075",
+  "cited_pages": [
+   "security"
+  ],
+  "cited_passages": [
+   "Parcelpath completed a SOC 2 Type II audit in October 2025."
+  ],
+  "reply_sentence": "Parcelpath completed a SOC 2 Type II audit in October 2025.",
+  "label": "supported",
+  "support_page": "security",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "AG-076",
+  "cited_pages": [
+   "security"
+  ],
+  "cited_passages": [
+   "Parcelpath completed a SOC 2 Type II audit in October 2025."
+  ],
+  "reply_sentence": "Parcelpath is ISO 27001 certified.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "true_not_in_pages",
+  "reason": "Not in the pages."
+ },
+ {
+  "id": "AG-077",
+  "cited_pages": [
+   "security"
+  ],
+  "cited_passages": [
+   "Passwords must have at least 12 characters."
+  ],
+  "reply_sentence": "Passwords must have at least 8 characters.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "12."
+ },
+ {
+  "id": "AG-078",
+  "cited_pages": [
+   "security"
+  ],
+  "cited_passages": [
+   "Support staff will never ask for your password or your full API key."
+  ],
+  "reply_sentence": "Support will ask for your password to verify your identity.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Never asks."
+ },
+ {
+  "id": "AG-079",
+  "cited_pages": [
+   "support-hours"
+  ],
+  "cited_passages": [
+   "Support is available Monday to Friday, 08:00 to 18:00 UTC."
+  ],
+  "reply_sentence": "Support is available Monday to Friday, 08:00 to 18:00 UTC.",
+  "label": "supported",
+  "support_page": "support-hours",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "AG-080",
+  "cited_pages": [
+   "support-hours"
+  ],
+  "cited_passages": [
+   "Support is available Monday to Friday, 08:00 to 18:00 UTC."
+  ],
+  "reply_sentence": "Support is available seven days a week.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Weekdays only."
+ },
+ {
+  "id": "AG-081",
+  "cited_pages": [
+   "support-hours"
+  ],
+  "cited_passages": [
+   "First reply targets are 24 business hours on Starter, 8 business hours on Growth and 2 business hours on Scale."
+  ],
+  "reply_sentence": "Growth customers get a first reply within 8 business hours.",
+  "label": "supported",
+  "support_page": "support-hours",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-082",
+  "cited_pages": [
+   "support-hours"
+  ],
+  "cited_passages": [
+   "First reply targets are 24 business hours on Starter, 8 business hours on Growth and 2 business hours on Scale."
+  ],
+  "reply_sentence": "Growth customers get a first reply within 2 business hours.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_plan",
+  "reason": "2 is Scale."
+ },
+ {
+  "id": "AG-083",
+  "cited_pages": [
+   "support-hours"
+  ],
+  "cited_passages": [
+   "Phone support is available on Scale only."
+  ],
+  "reply_sentence": "Phone support is available on Growth and Scale.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_plan",
+  "reason": "Scale only."
+ },
+ {
+  "id": "AG-084",
+  "cited_pages": [
+   "insurance-claims"
+  ],
+  "cited_passages": [
+   "Cover costs 1.1% of the declared value, with a minimum of $0.80."
+  ],
+  "reply_sentence": "Cover on a $400 parcel costs $4.40.",
+  "label": "supported",
+  "support_page": "insurance-claims",
+  "trap_type": "none",
+  "reason": "1.1% of 400 is 4.40, above the $0.80 minimum."
+ },
+ {
+  "id": "AG-085",
+  "cited_pages": [
+   "insurance-claims"
+  ],
+  "cited_passages": [
+   "Cover costs 1.1% of the declared value, with a minimum of $0.80."
+  ],
+  "reply_sentence": "Cover on a $400 parcel costs $44.00.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "Arithmetic error: 1.1% of $400 is $4.40."
+ },
+ {
+  "id": "AG-086",
+  "cited_pages": [
+   "insurance-claims"
+  ],
+  "cited_passages": [
+   "The maximum declared value is $2,500 per parcel."
+  ],
+  "reply_sentence": "You can declare up to $5,000 per parcel.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "$2,500."
+ },
+ {
+  "id": "AG-087",
+  "cited_pages": [
+   "insurance-claims"
+  ],
+  "cited_passages": [
+   "Claims are paid by the carrier's insurer, not by Parcelpath."
+  ],
+  "reply_sentence": "Parcelpath pays insurance claims directly.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Paid by the carrier's insurer."
+ },
+ {
+  "id": "AG-088",
+  "cited_pages": [
+   "insurance-claims"
+  ],
+  "cited_passages": [
+   "A damage claim must be filed within 30 days of the delivery date."
+  ],
+  "reply_sentence": "A damage claim must be filed within 30 days of delivery.",
+  "label": "supported",
+  "support_page": "insurance-claims",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-089",
+  "cited_pages": [
+   "insurance-claims"
+  ],
+  "cited_passages": [
+   "A parcel is treated as lost after 15 days without a tracking update for domestic parcels and after 30 days for international parcels."
+  ],
+  "reply_sentence": "An international parcel is treated as lost after 15 days without tracking.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "15 days is domestic; international is 30."
+ },
+ {
+  "id": "AG-090",
+  "cited_pages": [
+   "customs"
+  ],
+  "cited_passages": [
+   "A harmonized system (HS) code is required for every item shipped to the UK or the EU."
+  ],
+  "reply_sentence": "An HS code is required for every item shipped to the UK or EU.",
+  "label": "supported",
+  "support_page": "customs",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-091",
+  "cited_pages": [
+   "customs"
+  ],
+  "cited_passages": [
+   "DDP is available with Brightway Express only. Northline Post ships delivered at place only."
+  ],
+  "reply_sentence": "You can use DDP with Northline Post.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "DDP is Brightway only."
+ },
+ {
+  "id": "AG-092",
+  "cited_pages": [
+   "customs"
+  ],
+  "cited_passages": [
+   "Duties and taxes are the recipient's responsibility unless you choose delivered duty paid (DDP)."
+  ],
+  "reply_sentence": "Parcelpath pays duties and taxes on all international parcels.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Recipient pays unless DDP."
+ },
+ {
+  "id": "AG-093",
+  "cited_pages": [
+   "team-seats"
+  ],
+  "cited_passages": [
+   "Starter includes 1 seat, Growth includes 5 seats and Scale includes 25 seats."
+  ],
+  "reply_sentence": "Scale includes 25 seats.",
+  "label": "supported",
+  "support_page": "team-seats",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-094",
+  "cited_pages": [
+   "team-seats"
+  ],
+  "cited_passages": [
+   "Extra seats cost $9 per seat per month on Growth and Scale. Starter cannot add seats."
+  ],
+  "reply_sentence": "Starter can add extra seats for $9 each.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_plan",
+  "reason": "Starter cannot add seats."
+ },
+ {
+  "id": "AG-095",
+  "cited_pages": [
+   "team-seats"
+  ],
+  "cited_passages": [
+   "Packers can create labels but cannot see billing or API keys."
+  ],
+  "reply_sentence": "Packers can see API keys but not billing.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "partial_negation",
+  "reason": "Cannot see either."
+ },
+ {
+  "id": "AG-096",
+  "cited_pages": [
+   "batch-shipping"
+  ],
+  "cited_passages": [
+   "You can import up to 500 orders in one CSV file. The file can be up to 10 MB."
+  ],
+  "reply_sentence": "A CSV can hold up to 500 orders and 10 MB.",
+  "label": "supported",
+  "support_page": "batch-shipping",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-097",
+  "cited_pages": [
+   "batch-shipping"
+  ],
+  "cited_passages": [
+   "Rows with errors are skipped and listed in an error report that downloads after the import."
+  ],
+  "reply_sentence": "If one row has an error the whole import is cancelled.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Bad rows are skipped."
+ },
+ {
+  "id": "AG-098",
+  "cited_pages": [
+   "tracking-notifications"
+  ],
+  "cited_passages": [
+   "SMS tracking is not available. Tracking pages refresh every 30 minutes."
+  ],
+  "reply_sentence": "Tracking pages refresh every 30 minutes.",
+  "label": "supported",
+  "support_page": "tracking-notifications",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-099",
+  "cited_pages": [
+   "tracking-notifications"
+  ],
+  "cited_passages": [
+   "SMS tracking is not available. Tracking pages refresh every 30 minutes."
+  ],
+  "reply_sentence": "Tracking pages refresh in real time.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Every 30 minutes."
+ },
+ {
+  "id": "AG-100",
+  "cited_pages": [
+   "data-privacy"
+  ],
+  "cited_passages": [
+   "Deletion requests are processed within 30 days."
+  ],
+  "reply_sentence": "Deletion requests are processed within 30 days.",
+  "label": "supported",
+  "support_page": "data-privacy",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "AG-101",
+  "cited_pages": [
+   "data-privacy"
+  ],
+  "cited_passages": [
+   "Parcelpath never shares one customer's account details with another customer."
+  ],
+  "reply_sentence": "Support can tell a friend of the owner how many labels the owner bought.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Never shared."
+ },
+ {
+  "id": "AG-102",
+  "cited_pages": [
+   "data-privacy"
+  ],
+  "cited_passages": [
+   "Recipient addresses are deleted 18 months after delivery."
+  ],
+  "reply_sentence": "Recipient addresses are deleted 18 days after delivery.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "18 months."
+ },
+ {
+  "id": "AG-103",
+  "cited_pages": [
+   "outages-status"
+  ],
+  "cited_passages": [
+   "If uptime is below 99.9% but at least 99.0%, the credit is 10% of the monthly fee."
+  ],
+  "reply_sentence": "At 99.5% uptime a Scale customer gets a credit of 10% of the monthly fee.",
+  "label": "supported",
+  "support_page": "outages-status",
+  "trap_type": "none",
+  "reason": "Matches band."
+ },
+ {
+  "id": "AG-104",
+  "cited_pages": [
+   "outages-status"
+  ],
+  "cited_passages": [
+   "The SLA does not apply to Starter or Growth."
+  ],
+  "reply_sentence": "Growth customers are covered by the uptime SLA.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_plan",
+  "reason": "Scale only."
+ },
+ {
+  "id": "AG-105",
+  "cited_pages": [
+   "outages-status"
+  ],
+  "cited_passages": [
+   "Carrier outages do not count as Parcelpath downtime."
+  ],
+  "reply_sentence": "A carrier outage entitles you to an SLA credit.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Does not count."
+ },
+ {
+  "id": "AG-106",
+  "cited_pages": [
+   "account-ownership"
+  ],
+  "cited_passages": [
+   "Only the current owner can transfer ownership."
+  ],
+  "reply_sentence": "An Admin can transfer account ownership to anyone.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Only the owner."
+ },
+ {
+  "id": "AG-107",
+  "cited_pages": [
+   "account-ownership"
+  ],
+  "cited_passages": [
+   "If the owner has left the company and cannot be reached, support can review a request with proof of company domain ownership and a signed letter from a company officer. Reviews take up to 5 business days."
+  ],
+  "reply_sentence": "Support can review an ownership request in up to 5 business days with domain proof and a signed officer letter.",
+  "label": "supported",
+  "support_page": "account-ownership",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-108",
+  "cited_pages": [
+   "terms-and-liability"
+  ],
+  "cited_passages": [
+   "Our total liability in any 12 month period is limited to the fees you paid in that period."
+  ],
+  "reply_sentence": "Parcelpath's liability is capped at the fees paid in the past 12 months.",
+  "label": "supported",
+  "support_page": "terms-and-liability",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-109",
+  "cited_pages": [
+   "terms-and-liability"
+  ],
+  "cited_passages": [
+   "Legal notices must be sent to legal@parcelpath.test. Support staff do not give legal advice."
+  ],
+  "reply_sentence": "Our support team can advise you on whether you have a legal case.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "No legal advice."
+ },
+ {
+  "id": "AG-110",
+  "cited_pages": [
+   "dangerous-goods"
+  ],
+  "cited_passages": [
+   "Loose lithium batteries are not accepted by any carrier on Parcelpath."
+  ],
+  "reply_sentence": "Loose lithium batteries can be shipped with Northline Post Ground.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Only packed with equipment."
+ },
+ {
+  "id": "AG-111",
+  "cited_pages": [
+   "dangerous-goods"
+  ],
+  "cited_passages": [
+   "If a parcel is leaking, smoking or hot, move away from it and call local emergency services. Then email safety@parcelpath.test."
+  ],
+  "reply_sentence": "If a parcel is leaking or hot, move away and call emergency services.",
+  "label": "supported",
+  "support_page": "dangerous-goods",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "AG-112",
+  "cited_pages": [
+   "dangerous-goods"
+  ],
+  "cited_passages": [
+   "No dangerous goods can be shipped by air."
+  ],
+  "reply_sentence": "Lithium batteries packed with equipment can go by air if declared.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "No dangerous goods by air."
+ },
+ {
+  "id": "AG-113",
+  "cited_pages": [
+   "changelog-2026"
+  ],
+  "cited_passages": [
+   "- 2026-03-01: Refund policy changed. The first charge refund window for monthly plans went from 14 days to 30 days."
+  ],
+  "reply_sentence": "The monthly refund window changed from 14 to 30 days on 2026-03-01.",
+  "label": "supported",
+  "support_page": "changelog-2026",
+  "trap_type": "none",
+  "reason": "Matches changelog."
+ },
+ {
+  "id": "AG-114",
+  "cited_pages": [
+   "changelog-2026"
+  ],
+  "cited_passages": [
+   "- 2026-04-15: The Growth plan label allowance went from 800 to 1,000 labels per month."
+  ],
+  "reply_sentence": "The Growth allowance went from 1,000 to 800 labels on 2026-04-15.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Direction reversed."
+ }
+]

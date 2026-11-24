@@ -1,0 +1,1716 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Deskfern API",
+  "version": "1.0.0"
+ },
+ "paths": {
+  "/health": {
+   "get": {
+    "summary": "Health",
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ready": {
+   "get": {
+    "summary": "Ready",
+    "operationId": "ready_ready_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/events/stream": {
+   "get": {
+    "summary": "Stream",
+    "operationId": "stream_api_events_stream_get",
+    "parameters": [
+     {
+      "name": "after",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 0,
+       "title": "After"
+      }
+     },
+     {
+      "name": "prefix",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Prefix"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/auth/login": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Sign in with email and password",
+    "operationId": "login_api_auth_login_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Login"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/auth/logout": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "End the session (the web app clears the cookie)",
+    "operationId": "logout_api_auth_logout_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/auth/me": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Who is signed in",
+    "operationId": "me_api_auth_me_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/overview": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "Headline numbers",
+    "operationId": "overview_api_overview_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "The queue with SLA timers",
+    "operationId": "tickets_api_tickets_get",
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "",
+       "title": "Status"
+      }
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "",
+       "title": "Q"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 5000,
+       "minimum": 1,
+       "default": 300,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets/{tid}": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "One ticket: conversation, draft with cited passages, meter, escalation, refund",
+    "operationId": "ticket_api_tickets__tid__get",
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/knowledge": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "Sources, documents, coverage",
+    "operationId": "knowledge_api_knowledge_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/gaps": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "Questions with no good source, grouped",
+    "operationId": "gaps_api_gaps_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/documents/{did}": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "A document with its chunks (the source viewer)",
+    "operationId": "document_api_documents__did__get",
+    "parameters": [
+     {
+      "name": "did",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Did"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/policies/refund": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "The refund rule",
+    "operationId": "refund_rule_api_policies_refund_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Change the refund rule (owner only)",
+    "operationId": "put_rule_api_policies_refund_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RuleIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/health": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "Customer health and churn risk",
+    "operationId": "health_api_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/insights": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "Topics, deflection, escalations",
+    "operationId": "insights_page_api_insights_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/insights/explain": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "The Insights numbers in plain words",
+    "operationId": "insights_explain_api_insights_explain_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/testcases": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "Regression test cases made from agent edits",
+    "operationId": "testcases_api_testcases_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/actions": {
+   "get": {
+    "tags": [
+     "read"
+    ],
+    "summary": "Refund requests and their state",
+    "operationId": "actions_api_actions_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets/{tid}/reply": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Send the reply (the draft or an edited version). An edit becomes a regression test case. In draft mode nothing leaves.",
+    "operationId": "reply_api_tickets__tid__reply_post",
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ReplyIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets/{tid}/redraft": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Draft again from the current knowledge",
+    "operationId": "redraft_api_tickets__tid__redraft_post",
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets/{tid}/escalate": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Hand the ticket to a person",
+    "operationId": "escalate_api_tickets__tid__escalate_post",
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EscalateIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets/{tid}/refund": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Ask for a refund by hand. It only creates an approval request, and the person who asks cannot approve it.",
+    "operationId": "refund_api_tickets__tid__refund_post",
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/policies/refund/simulate": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "What a rule would decide for every paying customer. Changes nothing.",
+    "operationId": "simulate_api_policies_refund_simulate_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RuleIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/knowledge/documents": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Add or update a page by pasting text",
+    "operationId": "add_document_api_knowledge_documents_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TextDocIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/knowledge/sources": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Add a source. A site starts a crawl.",
+    "operationId": "add_source_api_knowledge_sources_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SourceIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/knowledge/crawl/{jid}": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Crawl progress and what was skipped and why",
+    "operationId": "crawl_status_api_knowledge_crawl__jid__get",
+    "parameters": [
+     {
+      "name": "jid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Jid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/testcases/run": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Run every regression test case against the current knowledge",
+    "operationId": "run_tests_api_testcases_run_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/testcases/{cid}": {
+   "delete": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Remove a test case",
+    "operationId": "del_case_api_testcases__cid__delete",
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/gaps/{gid}/status": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Mark a gap covered or dismissed",
+    "operationId": "gap_status_api_gaps__gid__status_post",
+    "parameters": [
+     {
+      "name": "gid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Gid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GapStatusIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/gaps/{gid}/suggest": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Suggest a help page title and outline for a gap",
+    "operationId": "gap_suggest_api_gaps__gid__suggest_post",
+    "parameters": [
+     {
+      "name": "gid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Gid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/insights/refresh": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Recompute gaps and health scores",
+    "operationId": "refresh_api_insights_refresh_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/approvals": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Pending and recent approvals",
+    "operationId": "approvals_api_approvals_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/approvals/{approval_id}/decide": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Approve or reject",
+    "operationId": "decide_approval_api_approvals__approval_id__decide_post",
+    "parameters": [
+     {
+      "name": "approval_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Approval Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DecideIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/audit": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Audit log, newest first",
+    "operationId": "audit_api_audit_get",
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 1000,
+       "minimum": 1,
+       "default": 100,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/audit/verify": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Check the audit chain has not been edited",
+    "operationId": "audit_verify_api_audit_verify_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/integrations": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Every adapter, which one is selected, and what it needs",
+    "operationId": "integrations_api_integrations_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/integrations/{category}/test": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Test the selected adapter in a category",
+    "operationId": "test_integration_api_integrations__category__test_post",
+    "parameters": [
+     {
+      "name": "category",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Category"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/settings": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Mode, kill switch and config problems",
+    "operationId": "get_settings_api_settings_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Turn the kill switch or draft mode on or off (owner only). The app can never switch live mode on.",
+    "operationId": "post_settings_api_settings_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SettingsIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/webhooks/chatwoot": {
+   "post": {
+    "tags": [
+     "webhooks"
+    ],
+    "summary": "Chatwoot message_created webhook (signature and time checked)",
+    "operationId": "chatwoot_api_webhooks_chatwoot_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/demo/state": {
+   "get": {
+    "tags": [
+     "demo"
+    ],
+    "summary": "The demo clock",
+    "operationId": "state_api_demo_state_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/demo/reset": {
+   "post": {
+    "tags": [
+     "demo"
+    ],
+    "summary": "Reset to the seed data and a fresh clock",
+    "operationId": "reset_api_demo_reset_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/demo/tick": {
+   "post": {
+    "tags": [
+     "demo"
+    ],
+    "summary": "Run every job once, now",
+    "operationId": "tick_api_demo_tick_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/demo/advance": {
+   "post": {
+    "tags": [
+     "demo"
+    ],
+    "summary": "Move the demo clock forward",
+    "operationId": "advance_api_demo_advance_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AdvanceIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/demo/stress-tickets": {
+   "post": {
+    "tags": [
+     "demo"
+    ],
+    "summary": "Add many fictional tickets, to check that long tables stay fast",
+    "operationId": "stress_api_demo_stress_tickets_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StressIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "AdvanceIn": {
+    "properties": {
+     "hours": {
+      "type": "number",
+      "maximum": 720.0,
+      "minimum": 0.0,
+      "title": "Hours"
+     }
+    },
+    "type": "object",
+    "required": [
+     "hours"
+    ],
+    "title": "AdvanceIn"
+   },
+   "DecideIn": {
+    "properties": {
+     "approve": {
+      "type": "boolean",
+      "title": "Approve"
+     },
+     "note": {
+      "type": "string",
+      "maxLength": 500,
+      "title": "Note",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "approve"
+    ],
+    "title": "DecideIn"
+   },
+   "EscalateIn": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 3,
+      "title": "Reason"
+     },
+     "owner": {
+      "type": "string",
+      "maxLength": 60,
+      "title": "Owner",
+      "default": "support lead"
+     }
+    },
+    "type": "object",
+    "required": [
+     "reason"
+    ],
+    "title": "EscalateIn"
+   },
+   "GapStatusIn": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "pattern": "^(open|covered|dismissed)$",
+      "title": "Status"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status"
+    ],
+    "title": "GapStatusIn"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "Login": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "password": {
+      "type": "string",
+      "title": "Password"
+     }
+    },
+    "type": "object",
+    "required": [
+     "email",
+     "password"
+    ],
+    "title": "Login"
+   },
+   "ReplyIn": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "maxLength": 8000,
+      "minLength": 1,
+      "title": "Text"
+     }
+    },
+    "type": "object",
+    "required": [
+     "text"
+    ],
+    "title": "ReplyIn"
+   },
+   "RuleIn": {
+    "properties": {
+     "monthly_days": {
+      "type": "integer",
+      "maximum": 365.0,
+      "minimum": 0.0,
+      "title": "Monthly Days"
+     },
+     "annual_days": {
+      "type": "integer",
+      "maximum": 365.0,
+      "minimum": 0.0,
+      "title": "Annual Days"
+     },
+     "max_per_12m": {
+      "type": "integer",
+      "maximum": 12.0,
+      "minimum": 0.0,
+      "title": "Max Per 12M"
+     },
+     "always_full": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Always Full",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "monthly_days",
+     "annual_days",
+     "max_per_12m"
+    ],
+    "title": "RuleIn"
+   },
+   "SettingsIn": {
+    "properties": {
+     "kill_switch": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kill Switch"
+     },
+     "force_draft": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Force Draft"
+     }
+    },
+    "type": "object",
+    "title": "SettingsIn"
+   },
+   "SourceIn": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "pattern": "^(site|drive|notion)$",
+      "title": "Kind"
+     },
+     "name": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 2,
+      "title": "Name"
+     },
+     "uri": {
+      "type": "string",
+      "maxLength": 500,
+      "title": "Uri",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind",
+     "name"
+    ],
+    "title": "SourceIn"
+   },
+   "StressIn": {
+    "properties": {
+     "n": {
+      "type": "integer",
+      "maximum": 20000.0,
+      "minimum": 1.0,
+      "title": "N"
+     }
+    },
+    "type": "object",
+    "required": [
+     "n"
+    ],
+    "title": "StressIn"
+   },
+   "TextDocIn": {
+    "properties": {
+     "title": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 2,
+      "title": "Title"
+     },
+     "text": {
+      "type": "string",
+      "maxLength": 200000,
+      "minLength": 20,
+      "title": "Text"
+     }
+    },
+    "type": "object",
+    "required": [
+     "title",
+     "text"
+    ],
+    "title": "TextDocIn"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  }
+ }
+}

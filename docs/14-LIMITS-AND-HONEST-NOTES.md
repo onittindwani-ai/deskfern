@@ -1,0 +1,14 @@
+# Limits and honest notes
+
+- **The live model path has never run with a real key (UNVERIFIED).** The code behind `LLM_BACKEND=anthropic` writes the reply sentences, can judge a gray sentence, adds a second look to the triage and words suggestions and Insights numbers. It was run only against a local fake server that checks the request shape, and against recordings made from that fake server. How a real model writes your replies, what it costs per ticket and how often it is wrong are unknown. The code checks around it (unsupported sentences removed, no refunds or sending by a model, orders in tickets and pages kept out) are tested; see `facts/models.md`.
+
+- **The demo answer writer is a stand in, not a language model.** It picks sentences. On a held out set of 63 questions written before the code, it answered 13 correctly on the first run. It over hands tickets to people and misses questions worded differently from the pages. This is measured in `ANSWER-EVAL.md`, and on two independent sets in `INDEPENDENT-EVAL.md` (about 6 in 10 tickets read right on the first run, and it still answers some tickets that need a person when a nearby page exists). A real model or real embeddings may do better or differently, and that was not measured.
+- **The groundedness checker was tuned on a set its author labelled**, so its precision of 1.0 on 79 labelled sentences is not an independent score. The first, untouched run was precision 0.893 and recall 0.625.
+- **Search similarity is a hashed bag of words**, not a language model embedding. The Postgres full text path and the migration up, down, up cycle were run once in a throwaway local Postgres 17 (seed score 86 of 121 against 83 on SQLite; the ranking differs). The full test suite and the browser tests ran on SQLite only.
+- **No real vendor was contacted.** Adapters were tested against local imitations. Vendor page names and steps in the guides are marked UNVERIFIED where they were not read.
+- **Docker builds were not run.** The deploy files are untested.
+- **Languages:** the demo has five non English tickets and handles them by handing over. Replies are drafted in English.
+- **Not built:** a Drive token refresh, attachments in tickets, voice, chat widget, multi brand setups, and any automatic change of your help pages.
+- **Scores for health and churn** are simple rules with fictional examples, not predictions.
+- **Refund amounts** above your limit always need a person. The limits in the demo are defaults, not your rules.
+- **SQLite allows one writer at a time.** In the browser test run a log line showed a database lock error once while the demo clock job ran next to another request (the tests still passed). Use Postgres for more than a few people.

@@ -1,0 +1,5 @@
+Vendor: Chatwoot. Read 2026-11-23 with a page fetch (public docs, no account).
+Page: https://developers.chatwoot.com/api-reference/messages/create-new-message
+create_message.json holds the documented method, path, auth headers, body fields and the response field names. The page gives a reply request example but no example response body, so the response is only a field list.
+The page names `Authorization: Bearer <token>` and calls `api_access_token` legacy (to be deprecated). The adapter now sends both.
+No OpenAPI file was fetched (the fetch tool returns page text). The webhook signature rule was read earlier from the Chatwoot help article (see docs/facts/chatwoot.md). Never run against a real Chatwoot.

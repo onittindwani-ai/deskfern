@@ -1,0 +1,110 @@
+{
+ "n": 79,
+ "tp": 33,
+ "fp": 0,
+ "fn": 7,
+ "tn": 39,
+ "precision": 1.0,
+ "recall": 0.825,
+ "threshold": 0.65,
+ "misses": [
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "A customer can receive one refund in any 12 month period.",
+   "score": 0.51,
+   "checks": {
+    "coverage": 0.51,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "subject": true,
+    "names": true,
+    "ok": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "Fieldnote has no option to pause a subscription.",
+   "score": 0.62,
+   "checks": {
+    "coverage": 0.62,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "subject": true,
+    "names": true,
+    "ok": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "On Team, version history reaches back 90 days.",
+   "score": 0.2,
+   "checks": {
+    "coverage": 0.57,
+    "numbers": true,
+    "pairs": false,
+    "negation": false,
+    "subject": true,
+    "names": true,
+    "ok": false
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "The largest attachment on Free is 10 MB.",
+   "score": 0.596,
+   "checks": {
+    "coverage": 0.6,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "subject": true,
+    "names": true,
+    "ok": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "Business can make 300 requests per minute and gets a 429 when it goes over.",
+   "score": 0.2,
+   "checks": {
+    "coverage": 0.7,
+    "numbers": false,
+    "pairs": false,
+    "negation": true,
+    "subject": true,
+    "names": true,
+    "ok": false
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "A failed webhook delivery is tried again up to 5 times within an hour.",
+   "score": 0.63,
+   "checks": {
+    "coverage": 0.63,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "subject": true,
+    "names": true,
+    "ok": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "Support replies by email on weekdays between 9 and 17 US Eastern time.",
+   "score": 0.596,
+   "checks": {
+    "coverage": 0.6,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "subject": true,
+    "names": true,
+    "ok": true
+   }
+  }
+ ]
+}

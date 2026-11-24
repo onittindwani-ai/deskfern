@@ -1,0 +1,22 @@
+{
+ "documents": 41,
+ "markdown": 40,
+ "pdf": 1,
+ "customers": 25,
+ "tickets": 121,
+ "by_class": {
+  "single": 37,
+  "two": 12,
+  "unanswerable": 14,
+  "out_of_scope": 8,
+  "refund_in": 8,
+  "refund_out": 8,
+  "angry": 8,
+  "injection": 6,
+  "language": 5,
+  "other_customer": 5,
+  "conflict": 4,
+  "duplicate": 6
+ },
+ "words_in_kb": 1798
+}

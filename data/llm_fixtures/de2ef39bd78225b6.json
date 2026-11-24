@@ -1,0 +1,7 @@
+{
+  "text": "{\"title\": \"Help page about invoice vat\", \"outline\": [\"What customers are asking\", \"The answer, from your own policy or product facts\", \"Steps to follow, if there are any\", \"Who to contact if it does not solve it\"]}",
+  "input_tokens": 150,
+  "output_tokens": 40,
+  "model": "claude-haiku-5-5",
+  "prompt_preview": "[task:suggest_page]\nSuggest one help page for the questions in the data block. Number of questions: 3.\n\nReply with only JSON matching this schema:\n{\"additionalP"
+}

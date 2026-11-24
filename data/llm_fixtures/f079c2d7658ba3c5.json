@@ -1,0 +1,7 @@
+{
+  "text": "{\"sentences\": [{\"text\": \"A deleted note goes to the trash and stays there for 30 days.\", \"passage_ids\": [98]}, {\"text\": \"Backups are kept for 35 days.\", \"passage_ids\": [2]}, {\"text\": \"Backups are kept for 35 days.\", \"passage_ids\": [2]}], \"confidence\": 70, \"cannot_answer\": false}",
+  "input_tokens": 150,
+  "output_tokens": 40,
+  "model": "claude-sonnet-5-5",
+  "prompt_preview": "[task:write_answer]\nWrite the reply sentences for the ticket in the first data block. Use only the pages in the second data block.\nKEY_WORDS: [[\"back\", 3.18], ["
+}

@@ -1,0 +1,83 @@
+{
+ "tables": 17,
+ "api_paths": 44,
+ "api_operations": 46,
+ "pages": 10,
+ "screenshots": 35,
+ "tool_groups": 6,
+ "tools_scored": 17,
+ "seed": {
+  "documents": 41,
+  "markdown": 40,
+  "pdf": 1,
+  "customers": 25,
+  "tickets": 121,
+  "by_class": {
+   "single": 37,
+   "two": 12,
+   "unanswerable": 14,
+   "out_of_scope": 8,
+   "refund_in": 8,
+   "refund_out": 8,
+   "angry": 8,
+   "injection": 6,
+   "language": 5,
+   "other_customer": 5,
+   "conflict": 4,
+   "duplicate": 6
+  },
+  "words_in_kb": 1798
+ },
+ "heldout_questions": 63,
+ "independent": {
+  "a_first": {
+   "tickets": 78,
+   "strict_right": 46,
+   "lenient_right": 53,
+   "ground_precision": 0.737,
+   "ground_recall": 0.683,
+   "safety_answered_anyway": 3,
+   "safety_n": 16
+  },
+  "a_final": {
+   "tickets": 78,
+   "strict_right": 55,
+   "lenient_right": 60,
+   "ground_precision": 0.8,
+   "ground_recall": 0.683,
+   "safety_answered_anyway": 1,
+   "safety_n": 16
+  },
+  "b_first": {
+   "tickets": 88,
+   "strict_right": 49,
+   "lenient_right": 53,
+   "ground_precision": 0.757,
+   "ground_recall": 0.549,
+   "safety_answered_anyway": 2,
+   "safety_n": 18
+  },
+  "b_final": {
+   "tickets": 88,
+   "strict_right": 57,
+   "lenient_right": 60,
+   "ground_precision": 0.757,
+   "ground_recall": 0.549,
+   "safety_answered_anyway": 0,
+   "safety_n": 18
+  }
+ },
+ "contract_tests": 5,
+ "model_path_tests": 31,
+ "llm_fixtures": 46,
+ "e2e": {
+  "tests": 38,
+  "files": 5
+ },
+ "tests": {
+  "passed": 158,
+  "skipped": 1,
+  "failed": 0,
+  "coverage_percent": 91.4
+ }
+}

@@ -1,0 +1,3 @@
+Vendor: Stripe. Read 2026-11-23 with a page fetch (public docs, no account): https://docs.stripe.com/api/refunds/create
+create_refund.json holds the documented method and path, parameters, reason values and the example response (copied from the page). Stripe also publishes an OpenAPI file (github.com/stripe/openapi), about 7 MB; the fetch tool cannot return a file that size, so it was not used.
+The Idempotency-Key header is not on this page (it is on the idempotent requests page, not fetched today). The adapter is tier B. Never run against the real service.

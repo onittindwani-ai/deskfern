@@ -1,0 +1,1584 @@
+[
+ {
+  "id": "BG-001",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Standard shipping is $6.95 and arrives in 4 to 7 business days. Orders over $75 ship standard for free. Express is $19.95 and arrives in 2 business days."
+  ],
+  "reply_sentence": "Standard shipping costs $6.95 and takes 4 to 7 business days.",
+  "label": "supported",
+  "support_page": "shipping-rates",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-002",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Standard shipping is $6.95 and arrives in 4 to 7 business days. Orders over $75 ship standard for free. Express is $19.95 and arrives in 2 business days."
+  ],
+  "reply_sentence": "Standard shipping costs $6.95 and takes 4 to 7 days.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "Business days, not calendar days; the delivery promise is stricter than stated."
+ },
+ {
+  "id": "BG-003",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Standard shipping is $6.95 and arrives in 4 to 7 business days. Orders over $75 ship standard for free. Express is $19.95 and arrives in 2 business days."
+  ],
+  "reply_sentence": "Orders over $75 ship standard for free.",
+  "label": "supported",
+  "support_page": "shipping-rates",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-004",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Standard shipping is $6.95 and arrives in 4 to 7 business days. Orders over $75 ship standard for free. Express is $19.95 and arrives in 2 business days."
+  ],
+  "reply_sentence": "Orders over $57 ship standard for free.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "Threshold is $75."
+ },
+ {
+  "id": "BG-005",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Standard shipping is $6.95 and arrives in 4 to 7 business days. Orders over $75 ship standard for free. Express is $19.95 and arrives in 2 business days."
+  ],
+  "reply_sentence": "Express costs $19.95 and arrives in 2 business days.",
+  "label": "supported",
+  "support_page": "shipping-rates",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-006",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Standard shipping is $6.95 and arrives in 4 to 7 business days. Orders over $75 ship standard for free. Express is $19.95 and arrives in 2 business days."
+  ],
+  "reply_sentence": "Express arrives the next day.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "2 business days."
+ },
+ {
+  "id": "BG-007",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Standard shipping is $6.95 and arrives in 4 to 7 business days. Orders over $75 ship standard for free. Express is $19.95 and arrives in 2 business days."
+  ],
+  "reply_sentence": "Orders over $75 ship express for free.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Free applies to standard only."
+ },
+ {
+  "id": "BG-008",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Q: Do you ship to Alaska and Hawaii?\nA: Yes, standard only. Add $12 to the shipping cost."
+  ],
+  "reply_sentence": "Yes, we ship to Hawaii, standard only, with $12 added.",
+  "label": "supported",
+  "support_page": "shipping-rates",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-009",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Q: Do you ship to Alaska and Hawaii?\nA: Yes, standard only. Add $12 to the shipping cost."
+  ],
+  "reply_sentence": "We ship express to Alaska for an extra $12.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Standard only."
+ },
+ {
+  "id": "BG-010",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Q: Do you ship to PO boxes?\nA: Standard only. Express cannot go to a PO box."
+  ],
+  "reply_sentence": "Express can be delivered to a PO box.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Cannot."
+ },
+ {
+  "id": "BG-011",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Orders placed before 2 pm Mountain Time Monday to Thursday ship the same day. Orders placed Friday to Sunday ship Monday."
+  ],
+  "reply_sentence": "An order placed on Saturday ships on Monday.",
+  "label": "supported",
+  "support_page": "shipping-rates",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-012",
+  "cited_pages": [
+   "shipping-rates"
+  ],
+  "cited_passages": [
+   "Orders placed before 2 pm Mountain Time Monday to Thursday ship the same day. Orders placed Friday to Sunday ship Monday."
+  ],
+  "reply_sentence": "Orders placed before 2 pm Eastern Time ship the same day.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "Mountain Time."
+ },
+ {
+  "id": "BG-013",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Return window: 60 days from delivery. This replaced the old 45 day window on 2026-09-01."
+  ],
+  "reply_sentence": "You have 60 days from delivery to return an item.",
+  "label": "supported",
+  "support_page": "returns",
+  "trap_type": "none",
+  "reason": "Current."
+ },
+ {
+  "id": "BG-014",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Return window: 60 days from delivery. This replaced the old 45 day window on 2026-09-01."
+  ],
+  "reply_sentence": "You have 45 days from delivery to return an item.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "stale_info",
+  "reason": "Old window."
+ },
+ {
+  "id": "BG-015",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Return window: 60 days from delivery. This replaced the old 45 day window on 2026-09-01."
+  ],
+  "reply_sentence": "You have 60 days from the order date to return an item.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "Counted from delivery, not order date."
+ },
+ {
+  "id": "BG-016",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Items must be unused and in original packaging, except footwear, which may be tried on indoors only."
+  ],
+  "reply_sentence": "Footwear can be returned if it was only tried on indoors.",
+  "label": "supported",
+  "support_page": "returns",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-017",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Items must be unused and in original packaging, except footwear, which may be tried on indoors only."
+  ],
+  "reply_sentence": "Boots can be returned after trail use if the box is intact.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Indoors only."
+ },
+ {
+  "id": "BG-018",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Refunds go to the original payment method within 7 business days after we receive the return."
+  ],
+  "reply_sentence": "Refunds are issued within 7 business days after we receive the return.",
+  "label": "supported",
+  "support_page": "returns",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-019",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Refunds go to the original payment method within 7 business days after we receive the return."
+  ],
+  "reply_sentence": "Refunds are issued within 7 business days after you ship the return.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Clock starts when we receive it."
+ },
+ {
+  "id": "BG-020",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Return shipping: free for defective or wrong items, otherwise $8 deducted from the refund."
+  ],
+  "reply_sentence": "If you return an item because you changed your mind, $8 is deducted from your refund.",
+  "label": "supported",
+  "support_page": "returns",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-021",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Return shipping: free for defective or wrong items, otherwise $8 deducted from the refund."
+  ],
+  "reply_sentence": "Return shipping is always free.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Not always."
+ },
+ {
+  "id": "BG-022",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Sale items marked FINAL SALE cannot be returned."
+  ],
+  "reply_sentence": "Items marked FINAL SALE can be returned for store credit.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Cannot be returned."
+ },
+ {
+  "id": "BG-023",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Gift returns get store credit unless the buyer made the order."
+  ],
+  "reply_sentence": "A gift recipient who returns an item gets store credit.",
+  "label": "supported",
+  "support_page": "returns",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-024",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Used gear is accepted only if it is defective. Report the defect within 30 days of delivery."
+  ],
+  "reply_sentence": "Defects on used gear must be reported within 30 days of delivery.",
+  "label": "supported",
+  "support_page": "returns",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-025",
+  "cited_pages": [
+   "returns"
+  ],
+  "cited_passages": [
+   "- Used gear is accepted only if it is defective. Report the defect within 30 days of delivery."
+  ],
+  "reply_sentence": "Defects on used gear must be reported within 60 days of delivery.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "30 days."
+ },
+ {
+  "id": "BG-026",
+  "cited_pages": [
+   "returns-2025-old"
+  ],
+  "cited_passages": [
+   "- Footwear could not be returned once worn, even indoors."
+  ],
+  "reply_sentence": "Footwear can never be returned once tried on.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "stale_info",
+  "reason": "Old rule; current allows indoor try on."
+ },
+ {
+  "id": "BG-027",
+  "cited_pages": [
+   "warranty"
+  ],
+  "cited_passages": [
+   "- Tents: 5 years on seams and poles."
+  ],
+  "reply_sentence": "Tents have a 5 year warranty on seams and poles.",
+  "label": "supported",
+  "support_page": "warranty",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-028",
+  "cited_pages": [
+   "warranty"
+  ],
+  "cited_passages": [
+   "- Tents: 5 years on seams and poles."
+  ],
+  "reply_sentence": "Tents have a lifetime warranty on poles.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "5 years."
+ },
+ {
+  "id": "BG-029",
+  "cited_pages": [
+   "warranty"
+  ],
+  "cited_passages": [
+   "- Sleeping bags: lifetime on zippers, 2 years on insulation loss."
+  ],
+  "reply_sentence": "Sleeping bag zippers are covered for life.",
+  "label": "supported",
+  "support_page": "warranty",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-030",
+  "cited_pages": [
+   "warranty"
+  ],
+  "cited_passages": [
+   "- Sleeping bags: lifetime on zippers, 2 years on insulation loss."
+  ],
+  "reply_sentence": "Sleeping bag insulation loss is covered for life.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "swapped_fact",
+  "reason": "Insulation is 2 years."
+ },
+ {
+  "id": "BG-031",
+  "cited_pages": [
+   "warranty"
+  ],
+  "cited_passages": [
+   "- Stoves and lanterns: 2 years."
+  ],
+  "reply_sentence": "Stoves are covered for 5 years.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "2 years."
+ },
+ {
+  "id": "BG-032",
+  "cited_pages": [
+   "warranty"
+  ],
+  "cited_passages": [
+   "- Not covered: wear and tear, UV damage, damage from fire, and misuse such as using a stove inside a tent."
+  ],
+  "reply_sentence": "Damage from using a stove in a tent is not covered.",
+  "label": "supported",
+  "support_page": "warranty",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-033",
+  "cited_pages": [
+   "warranty"
+  ],
+  "cited_passages": [
+   "- To claim, send your order number and 2 photos to warranty@ridgeback.test. We answer within 3 business days."
+  ],
+  "reply_sentence": "Send your order number and 2 photos to warranty@ridgeback.test.",
+  "label": "supported",
+  "support_page": "warranty",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-034",
+  "cited_pages": [
+   "warranty"
+  ],
+  "cited_passages": [
+   "- To claim, send your order number and 2 photos to warranty@ridgeback.test. We answer within 3 business days."
+  ],
+  "reply_sentence": "We answer warranty claims within 3 hours.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "3 business days."
+ },
+ {
+  "id": "BG-035",
+  "cited_pages": [
+   "rentals"
+  ],
+  "cited_passages": [
+   "Minimum: 3 nights."
+  ],
+  "reply_sentence": "Rentals have a 3 night minimum.",
+  "label": "supported",
+  "support_page": "rentals",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-036",
+  "cited_pages": [
+   "rentals"
+  ],
+  "cited_passages": [
+   "Where: pick up and drop off at our Boulder store only. We do not ship rentals."
+  ],
+  "reply_sentence": "We can ship your rental to your home.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "We do not ship rentals."
+ },
+ {
+  "id": "BG-037",
+  "cited_pages": [
+   "rentals"
+  ],
+  "cited_passages": [
+   "Deposit: $150 card hold per rental, released within 5 business days after the gear comes back in good condition."
+  ],
+  "reply_sentence": "The $150 deposit is a card hold, released within 5 business days after good condition return.",
+  "label": "supported",
+  "support_page": "rentals",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-038",
+  "cited_pages": [
+   "rentals"
+  ],
+  "cited_passages": [
+   "Deposit: $150 card hold per rental, released within 5 business days after the gear comes back in good condition."
+  ],
+  "reply_sentence": "The deposit is $150 per item.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Per rental, not per item."
+ },
+ {
+  "id": "BG-039",
+  "cited_pages": [
+   "rentals"
+  ],
+  "cited_passages": [
+   "Late return: $25 per day per item."
+  ],
+  "reply_sentence": "A late return costs $25 per day per item.",
+  "label": "supported",
+  "support_page": "rentals",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-040",
+  "cited_pages": [
+   "rentals"
+  ],
+  "cited_passages": [
+   "Damage: repairable damage is billed at the repair cost, up to the deposit. Lost gear is billed at 70 percent of retail price."
+  ],
+  "reply_sentence": "Lost gear is billed at 70 percent of retail price.",
+  "label": "supported",
+  "support_page": "rentals",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-041",
+  "cited_pages": [
+   "rentals"
+  ],
+  "cited_passages": [
+   "Damage: repairable damage is billed at the repair cost, up to the deposit. Lost gear is billed at 70 percent of retail price."
+  ],
+  "reply_sentence": "Lost gear is billed at the full retail price.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "70 percent."
+ },
+ {
+  "id": "BG-042",
+  "cited_pages": [
+   "rentals"
+  ],
+  "cited_passages": [
+   "Cancel: free up to 48 hours before pick up. After that, the first night is charged."
+  ],
+  "reply_sentence": "After 48 hours before pick up, the first night is charged.",
+  "label": "supported",
+  "support_page": "rentals",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-043",
+  "cited_pages": [
+   "rentals"
+  ],
+  "cited_passages": [
+   "Cancel: free up to 48 hours before pick up. After that, the first night is charged."
+  ],
+  "reply_sentence": "Cancelling within 48 hours of pick up is still free.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Not free."
+ },
+ {
+  "id": "BG-044",
+  "cited_pages": [
+   "rentals"
+  ],
+  "cited_passages": [
+   "You must be 18 or older and show a photo ID."
+  ],
+  "reply_sentence": "Renters must be at least 21.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "18."
+ },
+ {
+  "id": "BG-045",
+  "cited_pages": [
+   "rental-rates"
+  ],
+  "cited_passages": [
+   "- 2 person tent: $22"
+  ],
+  "reply_sentence": "A 2 person tent rents for $22 a day.",
+  "label": "supported",
+  "support_page": "rental-rates",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-046",
+  "cited_pages": [
+   "rental-rates"
+  ],
+  "cited_passages": [
+   "- 4 person tent: $34"
+  ],
+  "reply_sentence": "A 4 person tent rents for $22 a day.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "$22 is the 2 person."
+ },
+ {
+  "id": "BG-047",
+  "cited_pages": [
+   "rental-rates"
+  ],
+  "cited_passages": [
+   "Weekly rate: 7 days for the price of 5."
+  ],
+  "reply_sentence": "Renting for 7 days costs the price of 5 days.",
+  "label": "supported",
+  "support_page": "rental-rates",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-048",
+  "cited_pages": [
+   "rental-rates"
+  ],
+  "cited_passages": [
+   "- Sleeping bag (20 F rated): $12"
+  ],
+  "reply_sentence": "The rental sleeping bag is rated to minus 20 C.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "20 F, not minus 20 C."
+ },
+ {
+  "id": "BG-049",
+  "cited_pages": [
+   "store-hours"
+  ],
+  "cited_passages": [
+   "Mon to Sat: 9:00 to 19:00\nSun: 10:00 to 17:00"
+  ],
+  "reply_sentence": "On Sundays the store is open from 10:00 to 17:00.",
+  "label": "supported",
+  "support_page": "store-hours",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-050",
+  "cited_pages": [
+   "store-hours"
+  ],
+  "cited_passages": [
+   "Mon to Sat: 9:00 to 19:00\nSun: 10:00 to 17:00"
+  ],
+  "reply_sentence": "On Sundays the store is open from 9:00 to 17:00.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "9:00 is the weekday opening."
+ },
+ {
+  "id": "BG-051",
+  "cited_pages": [
+   "store-hours"
+  ],
+  "cited_passages": [
+   "Rental pick up ends 1 hour before closing."
+  ],
+  "reply_sentence": "Rental pick up ends 1 hour before closing.",
+  "label": "supported",
+  "support_page": "store-hours",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-052",
+  "cited_pages": [
+   "store-hours"
+  ],
+  "cited_passages": [
+   "Closed Thanksgiving Day and Christmas Day."
+  ],
+  "reply_sentence": "The store is open on Thanksgiving until noon.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Closed."
+ },
+ {
+  "id": "BG-053",
+  "cited_pages": [
+   "gift-cards"
+  ],
+  "cited_passages": [
+   "- No expiry date.\n- No fees."
+  ],
+  "reply_sentence": "Gift cards do not expire and carry no fees.",
+  "label": "supported",
+  "support_page": "gift-cards",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-054",
+  "cited_pages": [
+   "gift-cards"
+  ],
+  "cited_passages": [
+   "- Can be used online and in the store, and can pay for rentals, but not for the rental deposit."
+  ],
+  "reply_sentence": "Gift cards can pay for the rental deposit.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Not the deposit."
+ },
+ {
+  "id": "BG-055",
+  "cited_pages": [
+   "gift-cards"
+  ],
+  "cited_passages": [
+   "- Lost card? We can only replace it if you have the card number from your email receipt. Physical cards without the number cannot be replaced."
+  ],
+  "reply_sentence": "A lost physical card without its number cannot be replaced.",
+  "label": "supported",
+  "support_page": "gift-cards",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-056",
+  "cited_pages": [
+   "gift-cards"
+  ],
+  "cited_passages": [
+   "- Not redeemable for cash, except where the law requires it."
+  ],
+  "reply_sentence": "Gift cards can always be cashed out.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Not redeemable for cash except where law requires."
+ },
+ {
+  "id": "BG-057",
+  "cited_pages": [
+   "trailpoints"
+  ],
+  "cited_passages": [
+   "You earn 1 point for every $1 spent on the shop. Rental spend earns 1 point per $2."
+  ],
+  "reply_sentence": "Rental spend earns 1 point per $2.",
+  "label": "supported",
+  "support_page": "trailpoints",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-058",
+  "cited_pages": [
+   "trailpoints"
+  ],
+  "cited_passages": [
+   "You earn 1 point for every $1 spent on the shop. Rental spend earns 1 point per $2."
+  ],
+  "reply_sentence": "Rental spend earns 1 point per $1.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "That is shop spend."
+ },
+ {
+  "id": "BG-059",
+  "cited_pages": [
+   "trailpoints"
+  ],
+  "cited_passages": [
+   "500 points make a $10 reward. That is 2 percent back."
+  ],
+  "reply_sentence": "500 points make a $10 reward.",
+  "label": "supported",
+  "support_page": "trailpoints",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-060",
+  "cited_pages": [
+   "trailpoints"
+  ],
+  "cited_passages": [
+   "500 points make a $10 reward. That is 2 percent back."
+  ],
+  "reply_sentence": "500 points make a $50 reward.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "$10."
+ },
+ {
+  "id": "BG-061",
+  "cited_pages": [
+   "trailpoints"
+  ],
+  "cited_passages": [
+   "Points expire after 18 months with no activity."
+  ],
+  "reply_sentence": "Points never expire.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "They expire after 18 months inactive."
+ },
+ {
+  "id": "BG-062",
+  "cited_pages": [
+   "trailpoints"
+  ],
+  "cited_passages": [
+   "Silver tier: 2,000 points in a calendar year. Silver members get free express upgrade on orders over $50."
+  ],
+  "reply_sentence": "Silver members get a free express upgrade on orders over $50.",
+  "label": "supported",
+  "support_page": "trailpoints",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-063",
+  "cited_pages": [
+   "trailpoints"
+  ],
+  "cited_passages": [
+   "Silver tier: 2,000 points in a calendar year. Silver members get free express upgrade on orders over $50."
+  ],
+  "reply_sentence": "Silver tier needs 2,000 points in a rolling 12 months.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "Calendar year."
+ },
+ {
+  "id": "BG-064",
+  "cited_pages": [
+   "trailpoints"
+  ],
+  "cited_passages": [
+   "Points are not earned on gift card purchases or on shipping and tax."
+  ],
+  "reply_sentence": "You earn points on gift card purchases.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Not earned."
+ },
+ {
+  "id": "BG-065",
+  "cited_pages": [
+   "price-match"
+  ],
+  "cited_passages": [
+   "We match a lower price on the same item (same model, same color, same size) from an authorized retailer.\nAsk within 14 days of purchase and send a link."
+  ],
+  "reply_sentence": "You must ask for a price match within 14 days of purchase.",
+  "label": "supported",
+  "support_page": "price-match",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-066",
+  "cited_pages": [
+   "price-match"
+  ],
+  "cited_passages": [
+   "Not matched: clearance, closeouts, marketplace sellers, auctions and limited time flash sales."
+  ],
+  "reply_sentence": "We match prices from third party marketplace sellers.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Not matched."
+ },
+ {
+  "id": "BG-067",
+  "cited_pages": [
+   "price-match"
+  ],
+  "cited_passages": [
+   "We refund the difference to your original payment method."
+  ],
+  "reply_sentence": "We refund the difference to your original payment method.",
+  "label": "supported",
+  "support_page": "price-match",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-068",
+  "cited_pages": [
+   "price-match"
+  ],
+  "cited_passages": [
+   "We refund the difference to your original payment method."
+  ],
+  "reply_sentence": "We refund the difference as store credit.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "invented_detail",
+  "reason": "Original method."
+ },
+ {
+  "id": "BG-069",
+  "cited_pages": [
+   "order-changes"
+  ],
+  "cited_passages": [
+   "- You have 2 hours after ordering to change or cancel it yourself in your account."
+  ],
+  "reply_sentence": "You can change or cancel an order yourself within 2 hours.",
+  "label": "supported",
+  "support_page": "order-changes",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-070",
+  "cited_pages": [
+   "order-changes"
+  ],
+  "cited_passages": [
+   "- You have 2 hours after ordering to change or cancel it yourself in your account."
+  ],
+  "reply_sentence": "You can change or cancel an order yourself within 24 hours.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "2 hours."
+ },
+ {
+  "id": "BG-071",
+  "cited_pages": [
+   "order-changes"
+  ],
+  "cited_passages": [
+   "- Once shipped, an order cannot be cancelled. Refuse the delivery or use our return process."
+  ],
+  "reply_sentence": "A shipped order can be cancelled at any time.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Cannot."
+ },
+ {
+  "id": "BG-072",
+  "cited_pages": [
+   "international-shipping"
+  ],
+  "cited_passages": [
+   "We ship to Canada and Mexico only."
+  ],
+  "reply_sentence": "We ship to Canada and Mexico.",
+  "label": "supported",
+  "support_page": "international-shipping",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-073",
+  "cited_pages": [
+   "international-shipping"
+  ],
+  "cited_passages": [
+   "Customer pays duties and taxes at delivery. Shipping takes 7 to 14 business days."
+  ],
+  "reply_sentence": "We pay duties on international orders.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Customer pays."
+ },
+ {
+  "id": "BG-074",
+  "cited_pages": [
+   "international-shipping"
+  ],
+  "cited_passages": [
+   "We ship to Canada and Mexico only."
+  ],
+  "reply_sentence": "We offer free returns from Canada.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "invented_detail",
+  "reason": "Not in pages."
+ },
+ {
+  "id": "BG-075",
+  "cited_pages": [
+   "fuel-and-safety"
+  ],
+  "cited_passages": [
+   "- Canisters ship by ground only, within the contiguous United States only. Maximum 6 per order."
+  ],
+  "reply_sentence": "You can order at most 6 canisters at a time, shipped by ground.",
+  "label": "supported",
+  "support_page": "fuel-and-safety",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-076",
+  "cited_pages": [
+   "fuel-and-safety"
+  ],
+  "cited_passages": [
+   "- Canisters ship by ground only, within the contiguous United States only. Maximum 6 per order."
+  ],
+  "reply_sentence": "Canisters ship by air for 2 day delivery.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Ground only."
+ },
+ {
+  "id": "BG-077",
+  "cited_pages": [
+   "fuel-and-safety"
+  ],
+  "cited_passages": [
+   "- Never use a stove inside a tent. Carbon monoxide can kill. Symptoms are headache, dizziness and nausea. Go outside to fresh air and get medical help."
+  ],
+  "reply_sentence": "If you feel dizzy after using a stove in a tent, go outside to fresh air and get medical help.",
+  "label": "supported",
+  "support_page": "fuel-and-safety",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-078",
+  "cited_pages": [
+   "fuel-and-safety"
+  ],
+  "cited_passages": [
+   "- Never use a stove inside a tent. Carbon monoxide can kill. Symptoms are headache, dizziness and nausea. Go outside to fresh air and get medical help."
+  ],
+  "reply_sentence": "Using a stove in a tent is fine if the door is open.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Never inside a tent."
+ },
+ {
+  "id": "BG-079",
+  "cited_pages": [
+   "fuel-and-safety"
+  ],
+  "cited_passages": [
+   "- Do not take canisters in checked luggage or carry on bags on planes."
+  ],
+  "reply_sentence": "Canisters are fine in checked luggage.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Not allowed."
+ },
+ {
+  "id": "BG-080",
+  "cited_pages": [
+   "fuel-and-safety"
+  ],
+  "cited_passages": [
+   "- If you smell gas, turn off the stove, move away from flames and do not use electrical switches."
+  ],
+  "reply_sentence": "Carbon monoxide is odorless, which is why detectors matter.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "true_not_in_pages",
+  "reason": "True in general but not in the pages."
+ },
+ {
+  "id": "BG-081",
+  "cited_pages": [
+   "care-guides"
+  ],
+  "cited_passages": [
+   "Sleeping bags: wash in a front loading machine on gentle, cold water (max 30 C or 86 F)."
+  ],
+  "reply_sentence": "Wash sleeping bags in cold water at no more than 30 C (86 F).",
+  "label": "supported",
+  "support_page": "care-guides",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-082",
+  "cited_pages": [
+   "care-guides"
+  ],
+  "cited_passages": [
+   "Sleeping bags: wash in a front loading machine on gentle, cold water (max 30 C or 86 F)."
+  ],
+  "reply_sentence": "Wash sleeping bags in cold water at no more than 30 F.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "30 C = 86 F."
+ },
+ {
+  "id": "BG-083",
+  "cited_pages": [
+   "care-guides"
+  ],
+  "cited_passages": [
+   "Tents: never machine wash. Sponge clean with lukewarm water. Dry fully before storing."
+  ],
+  "reply_sentence": "Tents can go in a front loading machine on gentle.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Never machine wash."
+ },
+ {
+  "id": "BG-084",
+  "cited_pages": [
+   "care-guides"
+  ],
+  "cited_passages": [
+   "Re-waterproofing: reapply a spray on treatment once a year or after 20 nights of use."
+  ],
+  "reply_sentence": "Reapply waterproofing once a year or after 20 nights.",
+  "label": "supported",
+  "support_page": "care-guides",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-085",
+  "cited_pages": [
+   "boot-sizing"
+  ],
+  "cited_passages": [
+   "Alderfoot boots run small by half a size. Order a half size up."
+  ],
+  "reply_sentence": "Alderfoot boots run small by half a size.",
+  "label": "supported",
+  "support_page": "boot-sizing",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-086",
+  "cited_pages": [
+   "boot-sizing"
+  ],
+  "cited_passages": [
+   "Alderfoot boots run small by half a size. Order a half size up."
+  ],
+  "reply_sentence": "Marlow boots run small by half a size.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "Marlow runs true."
+ },
+ {
+  "id": "BG-087",
+  "cited_pages": [
+   "boot-sizing"
+  ],
+  "cited_passages": [
+   "Exchanges for size are free for 60 days (we pay both ways) if the boots have only been tried on indoors."
+  ],
+  "reply_sentence": "Size exchanges are free for 60 days if boots were only tried indoors.",
+  "label": "supported",
+  "support_page": "boot-sizing",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-088",
+  "cited_pages": [
+   "recall-summit-stove"
+  ],
+  "cited_passages": [
+   "The pressure regulator on some Summit 2 stoves, model SS-200 with serial numbers beginning SS2-26, can leak fuel gas."
+  ],
+  "reply_sentence": "Some Summit 2 SS-200 stoves with serial numbers starting SS2-26 can leak fuel gas.",
+  "label": "supported",
+  "support_page": "recall-summit-stove",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-089",
+  "cited_pages": [
+   "recall-summit-stove"
+  ],
+  "cited_passages": [
+   "We send a free replacement regulator within 10 business days. No receipt needed."
+  ],
+  "reply_sentence": "The replacement regulator is free and ships within 10 business days.",
+  "label": "supported",
+  "support_page": "recall-summit-stove",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-090",
+  "cited_pages": [
+   "recall-summit-stove"
+  ],
+  "cited_passages": [
+   "We send a free replacement regulator within 10 business days. No receipt needed."
+  ],
+  "reply_sentence": "You need your receipt to get the replacement.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "No receipt needed."
+ },
+ {
+  "id": "BG-091",
+  "cited_pages": [
+   "recall-summit-stove"
+  ],
+  "cited_passages": [
+   "No other Ridgeback stove is affected."
+  ],
+  "reply_sentence": "All Ridgeback stoves are affected.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Only the SS-200."
+ },
+ {
+  "id": "BG-092",
+  "cited_pages": [
+   "recall-summit-stove"
+  ],
+  "cited_passages": [
+   "Affected stoves sold between 2026-03-01 and 2026-06-30."
+  ],
+  "reply_sentence": "Stoves sold in July 2026 are affected.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "Sold March to June."
+ },
+ {
+  "id": "BG-093",
+  "cited_pages": [
+   "recall-summit-stove"
+  ],
+  "cited_passages": [
+   "STOP USING THE STOVE. Turn off the fuel and remove the canister outdoors."
+  ],
+  "reply_sentence": "The recall was announced after three injuries were reported.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "invented_detail",
+  "reason": "Not in the pages."
+ },
+ {
+  "id": "BG-094",
+  "cited_pages": [
+   "discounts"
+  ],
+  "cited_passages": [
+   "Students, teachers, military and first responders get 10 percent off, once verified through VerifyPass."
+  ],
+  "reply_sentence": "Students get 10 percent off once verified through VerifyPass.",
+  "label": "supported",
+  "support_page": "discounts",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-095",
+  "cited_pages": [
+   "discounts"
+  ],
+  "cited_passages": [
+   "Not valid on sale items, gift cards, rentals or fuel.\nCannot be combined with other promo codes."
+  ],
+  "reply_sentence": "The discount can be used on rentals.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "Not valid on rentals."
+ },
+ {
+  "id": "BG-096",
+  "cited_pages": [
+   "discounts"
+  ],
+  "cited_passages": [
+   "Verification lasts 12 months."
+  ],
+  "reply_sentence": "Verification lasts 6 months.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "12 months."
+ },
+ {
+  "id": "BG-097",
+  "cited_pages": [
+   "payments"
+  ],
+  "cited_passages": [
+   "- Pay in 4 with Klarna on orders from $50 to $1,000."
+  ],
+  "reply_sentence": "Klarna pay in 4 works for orders from $50 to $1,000.",
+  "label": "supported",
+  "support_page": "payments",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-098",
+  "cited_pages": [
+   "payments"
+  ],
+  "cited_passages": [
+   "- Your card is charged when the order ships, not when it is placed."
+  ],
+  "reply_sentence": "Your card is charged as soon as you place the order.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "At shipping."
+ },
+ {
+  "id": "BG-099",
+  "cited_pages": [
+   "payments"
+  ],
+  "cited_passages": [
+   "- No checks, no cash on delivery."
+  ],
+  "reply_sentence": "We accept personal checks.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "No checks."
+ },
+ {
+  "id": "BG-100",
+  "cited_pages": [
+   "accounts-and-privacy"
+  ],
+  "cited_passages": [
+   "- We never tell anyone else what a customer bought, where it shipped or what card was used."
+  ],
+  "reply_sentence": "We never share what a customer bought or what card was used with anyone else.",
+  "label": "supported",
+  "support_page": "accounts-and-privacy",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-101",
+  "cited_pages": [
+   "accounts-and-privacy"
+  ],
+  "cited_passages": [
+   "- Delete your account: email privacy@ridgeback.test. Done within 30 days. Order records needed for tax are kept for 7 years."
+  ],
+  "reply_sentence": "Order records needed for tax are kept for 7 years after account deletion.",
+  "label": "supported",
+  "support_page": "accounts-and-privacy",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-102",
+  "cited_pages": [
+   "accounts-and-privacy"
+  ],
+  "cited_passages": [
+   "- Delete your account: email privacy@ridgeback.test. Done within 30 days. Order records needed for tax are kept for 7 years."
+  ],
+  "reply_sentence": "Deleting your account erases all order records.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "overclaim",
+  "reason": "Tax records kept 7 years."
+ },
+ {
+  "id": "BG-103",
+  "cited_pages": [
+   "contact-support"
+  ],
+  "cited_passages": [
+   "Email: help@ridgeback.test. We reply within 1 business day.\nLive chat: Mon to Fri, 9:00 to 17:00 Mountain Time.\nNo phone support."
+  ],
+  "reply_sentence": "Live chat runs Monday to Friday, 9:00 to 17:00 Mountain Time.",
+  "label": "supported",
+  "support_page": "contact-support",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-104",
+  "cited_pages": [
+   "contact-support"
+  ],
+  "cited_passages": [
+   "Email: help@ridgeback.test. We reply within 1 business day.\nLive chat: Mon to Fri, 9:00 to 17:00 Mountain Time.\nNo phone support."
+  ],
+  "reply_sentence": "You can call our phone line weekdays.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "negation_flip",
+  "reason": "No phone support."
+ },
+ {
+  "id": "BG-105",
+  "cited_pages": [
+   "damaged-or-missing"
+  ],
+  "cited_passages": [
+   "- Tell us within 7 days of delivery. Send 2 photos of the item and the box."
+  ],
+  "reply_sentence": "Report damage within 7 days of delivery with 2 photos.",
+  "label": "supported",
+  "support_page": "damaged-or-missing",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-106",
+  "cited_pages": [
+   "damaged-or-missing"
+  ],
+  "cited_passages": [
+   "- Package never arrived: wait 10 business days after the ship date, then contact us. We reship or refund."
+  ],
+  "reply_sentence": "If a package never arrives, wait 10 business days after the ship date before contacting us.",
+  "label": "supported",
+  "support_page": "damaged-or-missing",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-107",
+  "cited_pages": [
+   "damaged-or-missing"
+  ],
+  "cited_passages": [
+   "- Carrier lost it after tracking says delivered: we need a police report for orders over $300."
+  ],
+  "reply_sentence": "A police report is needed for orders over $30 marked delivered but lost.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "changed_number",
+  "reason": "$300."
+ },
+ {
+  "id": "BG-108",
+  "cited_pages": [
+   "holiday-2026"
+  ],
+  "cited_passages": [
+   "- Standard shipping order by Dec 14 to arrive before Dec 25."
+  ],
+  "reply_sentence": "Order standard shipping by Dec 14 to arrive before Dec 25.",
+  "label": "supported",
+  "support_page": "holiday-2026",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-109",
+  "cited_pages": [
+   "holiday-2026"
+  ],
+  "cited_passages": [
+   "- Holiday returns: anything bought between Nov 1 and Dec 24 can be returned until Jan 31, 2027."
+  ],
+  "reply_sentence": "Holiday purchases can be returned until Jan 31, 2027.",
+  "label": "supported",
+  "support_page": "holiday-2026",
+  "trap_type": "none",
+  "reason": "Matches."
+ },
+ {
+  "id": "BG-110",
+  "cited_pages": [
+   "holiday-2026"
+  ],
+  "cited_passages": [
+   "- Holiday returns: anything bought between Nov 1 and Dec 24 can be returned until Jan 31, 2027."
+  ],
+  "reply_sentence": "Holiday purchases can be returned within 60 days.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "stale_info",
+  "reason": "Holiday rule overrides the standard window."
+ },
+ {
+  "id": "BG-111",
+  "cited_pages": [
+   "repairs"
+  ],
+  "cited_passages": [
+   "Zipper replacement on jackets and bags: flat $15."
+  ],
+  "reply_sentence": "A zipper replacement costs a flat $15.",
+  "label": "supported",
+  "support_page": "repairs",
+  "trap_type": "none",
+  "reason": "Exact."
+ },
+ {
+  "id": "BG-112",
+  "cited_pages": [
+   "repairs"
+  ],
+  "cited_passages": [
+   "Re-waterproofing a tent: $35."
+  ],
+  "reply_sentence": "Re-waterproofing a tent costs $15.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_subject",
+  "reason": "$15 is zipper."
+ },
+ {
+  "id": "BG-113",
+  "cited_pages": [
+   "repairs"
+  ],
+  "cited_passages": [
+   "Turnaround about 3 weeks. We ship repairs back for $6.95."
+  ],
+  "reply_sentence": "Repairs take about 3 days.",
+  "label": "unsupported",
+  "support_page": null,
+  "trap_type": "wrong_unit",
+  "reason": "3 weeks."
+ }
+]

@@ -1,0 +1,7 @@
+{
+  "text": "{\"sentences\": [{\"text\": \"After a move to Free, notes over the Free limits stay readable but cannot be edited until you remove members or upgrade.\", \"passage_ids\": [16]}, {\"text\": \"Team and Business workspaces can invite up to 5 guests per workspace at no charge.\", \"passage_ids\": [40]}, {\"text\": \"Fieldnote has three plans.\", \"passage_ids\": [67]}], \"confidence\": 70, \"cannot_answer\": false}",
+  "input_tokens": 150,
+  "output_tokens": 40,
+  "model": "claude-sonnet-5-5",
+  "prompt_preview": "[task:write_answer]\nWrite the reply sentences for the ticket in the first data block. Use only the pages in the second data block.\nKEY_WORDS: [[\"member\", 2.24],"
+}

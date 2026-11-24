@@ -1,0 +1,4 @@
+{"method": "POST", "path": "/api/v1/accounts/{account_id}/conversations/{conversation_id}/messages",
+ "auth_headers": ["Authorization: Bearer <token>", "api_access_token: <token> (legacy)"],
+ "body_required": ["content"], "body_optional": ["message_type", "private", "content_type", "content_attributes", "source_id", "sender_type", "sender_id", "echo_id", "campaign_id", "template_params"],
+ "message_type_values": ["outgoing", "incoming"], "response_fields": ["id", "content", "message_type", "private", "status", "source_id", "content_type", "sender_type", "sender_id"]}

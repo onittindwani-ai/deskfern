@@ -1,0 +1,228 @@
+{
+ "n": 79,
+ "tp": 25,
+ "fp": 3,
+ "fn": 15,
+ "tn": 36,
+ "precision": 0.893,
+ "recall": 0.625,
+ "threshold": 0.8,
+ "misses": [
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "An invitation link stays valid for 7 days.",
+   "score": 0.6,
+   "checks": {
+    "coverage": 0.6,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "Business is 150 dollars per member when you pay yearly.",
+   "score": 0.2,
+   "checks": {
+    "coverage": 0.67,
+    "numbers": false,
+    "pairs": false,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "The workspace keeps working for 14 days after a failed payment and then turns read only.",
+   "score": 0.667,
+   "checks": {
+    "coverage": 0.67,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "Monthly plans can be refunded when the request comes within 7 days of the first payment.",
+   "score": 0.778,
+   "checks": {
+    "coverage": 0.78,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "A customer can receive one refund in any 12 month period.",
+   "score": 0.6,
+   "checks": {
+    "coverage": 0.6,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "Fieldnote has no option to pause a subscription.",
+   "score": 0.75,
+   "checks": {
+    "coverage": 0.75,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "Large workspaces may need up to 30 minutes to export.",
+   "score": 0.75,
+   "checks": {
+    "coverage": 0.75,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "On Team, version history reaches back 90 days.",
+   "score": 0.2,
+   "checks": {
+    "coverage": 0.33,
+    "numbers": false,
+    "pairs": false,
+    "negation": true,
+    "names": false
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "The largest attachment on Free is 10 MB.",
+   "score": 0.75,
+   "checks": {
+    "coverage": 0.75,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "Business can make 300 requests per minute and gets a 429 when it goes over.",
+   "score": 0.667,
+   "checks": {
+    "coverage": 0.67,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "A failed webhook delivery is tried again up to 5 times within an hour.",
+   "score": 0.5,
+   "checks": {
+    "coverage": 0.5,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "There is currently no Linux desktop app.",
+   "score": 0.75,
+   "checks": {
+    "coverage": 0.75,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "Business workspaces may pick the European Union as their region when they create the workspace.",
+   "score": 0.714,
+   "checks": {
+    "coverage": 0.71,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "Support replies by email on weekdays between 9 and 17 US Eastern time.",
+   "score": 0.714,
+   "checks": {
+    "coverage": 0.71,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "supported sentence rejected",
+   "sentence": "The refund window for annual plans was changed from 30 days to 14 days in September 2026.",
+   "score": 0.2,
+   "checks": {
+    "coverage": 0.86,
+    "numbers": false,
+    "pairs": false,
+    "negation": true,
+    "names": false
+   }
+  },
+  {
+   "kind": "unsupported sentence let through",
+   "sentence": "Admins can change billing and delete the workspace.",
+   "score": 1.0,
+   "checks": {
+    "coverage": 1.0,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "unsupported sentence let through",
+   "sentence": "Team can make 300 requests per minute.",
+   "score": 1.0,
+   "checks": {
+    "coverage": 1.0,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  },
+  {
+   "kind": "unsupported sentence let through",
+   "sentence": "Team workspaces get 100 GB of file storage for every member.",
+   "score": 1.0,
+   "checks": {
+    "coverage": 1.0,
+    "numbers": true,
+    "pairs": true,
+    "negation": true,
+    "names": true
+   }
+  }
+ ]
+}

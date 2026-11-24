@@ -1,0 +1,7 @@
+{
+  "text": "{\"sentences\": [{\"text\": \"Over the limit the API answers with status 429 and a Retry-After header.\", \"passage_ids\": [8]}, {\"text\": \"Team can make 60 requests per minute and Business 300 requests per minute.\", \"passage_ids\": [8]}], \"confidence\": 70, \"cannot_answer\": false}",
+  "input_tokens": 150,
+  "output_tokens": 40,
+  "model": "claude-sonnet-5-5",
+  "prompt_preview": "[task:write_answer]\nWrite the reply sentences for the ticket in the first data block. Use only the pages in the second data block.\nKEY_WORDS: [[\"rate\", 3.2], [\""
+}

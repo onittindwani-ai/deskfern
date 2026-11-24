@@ -1,0 +1,4 @@
+{"method": "POST", "path": "/v1/refunds", "auth": "HTTP basic, secret key as user name, empty password", "content_type": "application/x-www-form-urlencoded",
+ "parameters": ["amount", "charge", "currency", "customer", "instructions_email", "metadata", "origin", "payment_intent", "reason", "refund_application_fee", "reverse_transfer", "transfer_data"],
+ "reason_values": ["duplicate", "fraudulent", "requested_by_customer"], "amount_type": "integer, smallest currency unit",
+ "example_response": {"id": "re_1Nispe2eZvKYlo2Cd31jOCgZ", "object": "refund", "amount": 1000, "charge": "ch_1NirD82eZvKYlo2CIvbtLWuY", "currency": "usd", "metadata": {}, "reason": null, "status": "succeeded"}}
