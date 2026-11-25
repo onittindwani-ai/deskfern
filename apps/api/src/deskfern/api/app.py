@@ -8,6 +8,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from deskfern import privacy
 from deskfern.api import routes_admin, routes_auth, routes_demo, routes_read, routes_webhooks, routes_write
 from deskfern.config import Settings
 from deskfern.context import Ctx
@@ -52,13 +53,14 @@ def create_app(settings: Settings | None = None, ctx: Ctx | None = None) -> Fast
         if not settings.seed_dir and (REPO_DATA / "seed.json").is_file():
             ctx.settings.seed_dir = str(REPO_DATA)  # a source checkout; an installed copy must be told with SEED_DIR
     ctx.settings.check_runtime()  # refuse an unsafe configuration before anything is written
+    privacy.ensure_install_values(ctx.factory)
     if ctx.settings.demo_shortcuts:
         _seed_if_empty(ctx)
     app = create_base_app(ctx.settings, ctx.factory)
     app.title, app.version = "Deskfern API", "1.0.1"
     app.state.ctx = ctx
     app.state.limiter = TokenBucket(capacity=600, refill_per_sec=20.0)
-    app.state.login_guard = LoginGuard(ctx.settings.login_burst)  # per address, per address and account, and per account (failures only); see loginguard.py
+    app.state.login_guard = LoginGuard(ctx.settings.login_burst, watch_one_address=not ctx.settings.demo_shortcuts)  # per address, per address and account, and per account (failures only); see loginguard.py
 
     @app.middleware("http")
     async def require_session(request: Request, call_next):

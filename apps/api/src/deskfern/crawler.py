@@ -21,6 +21,8 @@ MAX_DELAY_S = 10.0  # the most a site's Crawl-delay (or CRAWL_DELAY_S) can slow 
 PAGE_DEADLINE_S = 30.0  # the most one page may take to arrive, however slowly the site drips it
 DEFAULT_DEADLINE_S = 120.0  # the most one whole crawl may take
 DEFAULT_TOTAL_BYTES = 10_000_000  # the most one whole crawl may read
+MAX_QUEUE = 2000  # addresses waiting to be visited: a page (or a site) that lists a million links cannot fill the memory
+MAX_LINKS_PER_PAGE = 300  # links followed from one page
 
 
 @dataclass
@@ -118,7 +120,11 @@ class Crawler:
             rp = urllib.robotparser.RobotFileParser()
             try:
                 _, r, body = self._fetch(origin + "/robots.txt")
-                rp.parse((body or "").splitlines()) if r.status_code == 200 and body and body not in {"TOO_BIG", "TOO_SLOW"} else rp.parse([])
+                if r.status_code in {401, 403} or r.status_code >= 500:
+                    rp.parse([])
+                    rp.disallow_all = True  # a site that forbids or cannot show its rules gets no visit (a missing file, 404, means no rules)
+                else:
+                    rp.parse((body or "").splitlines()) if r.status_code == 200 and body and body not in {"TOO_BIG", "TOO_SLOW"} else rp.parse([])
                 self.delay_s = min(MAX_DELAY_S, max(self.delay_s, float(rp.crawl_delay(AGENT) or 0)))  # a site cannot ask for a pause longer than MAX_DELAY_S
             except netguard.UnsafeURL:
                 raise
@@ -133,6 +139,7 @@ class Crawler:
         origin = urlparse(start).netloc
         self._deadline, self._total = self.clock() + self.deadline_s, 0
         queue, seen = [(urldefrag(start)[0], 0)], set()
+        queued = {queue[0][0]}
         while queue and len(res.pages) < self.max_pages:
             if self._time_left() <= 0:
                 res.skipped.append((queue[0][0], f"stopped: the crawl reached its time limit of {int(self.deadline_s)} seconds"))
@@ -175,8 +182,11 @@ class Crawler:
             if text.strip():
                 res.pages.append(Page(final, title or final, text))
             if depth < self.max_depth:
-                for href in links:
+                for href in links[:MAX_LINKS_PER_PAGE]:
+                    if len(queue) >= MAX_QUEUE:
+                        break
                     nxt = urldefrag(netguard.resolve_redirect(final, href))[0]
-                    if nxt not in seen and urlparse(nxt).scheme in {"http", "https"}:
+                    if nxt not in seen and nxt not in queued and urlparse(nxt).scheme in {"http", "https"}:
+                        queued.add(nxt)
                         queue.append((nxt, depth + 1))
         return res

@@ -265,7 +265,7 @@ def draft_for(session: Session, ctx, ticket, tri: Triage, writer: Writer | None 
         # not even "there is no payment on file", which would tell a stranger whether the address is a customer.
         return Draft("escalate", [Sent(T_VERIFY, "template")], reason="The sender's address could not be verified, so no account or payment was looked at. Press Confirm sender once you have checked who it is.", escalation_owner="support lead")
     if "refund_request" in tri.flags:
-        d = policies.decide_refund(policies.get_rule(session), cust, ctx.today(session))
+        d = policies.decide_refund(policies.get_rule(session), cust, ctx.today(session), policies.refunds_paid_here(session, cust, ctx.today(session)))
         pol = policy_sentences(session, d.code, cust.interval if cust else "monthly")
         sents = check_and_mark(session, pol, [cid for _, cid in pol]) if pol else []
         if d.eligible:

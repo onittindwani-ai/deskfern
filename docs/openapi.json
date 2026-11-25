@@ -1173,6 +1173,45 @@
     }
    }
   },
+  "/api/customers/erase": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Erase one customer and their tickets on request (owner only). Cannot be undone. The address is remembered only as a salted hash, so it is not imported or stored again.",
+    "operationId": "erase_customer_api_customers_erase_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EraseIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/approvals": {
    "get": {
     "tags": [
@@ -1643,6 +1682,21 @@
      "approve"
     ],
     "title": "DecideIn"
+   },
+   "EraseIn": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "maxLength": 254,
+      "minLength": 3,
+      "title": "Email"
+     }
+    },
+    "type": "object",
+    "required": [
+     "email"
+    ],
+    "title": "EraseIn"
    },
    "EscalateIn": {
     "properties": {

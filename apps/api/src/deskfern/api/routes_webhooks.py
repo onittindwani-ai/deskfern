@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from deskfern import desk
@@ -11,6 +14,7 @@ from deskfern.api.deps import db, get_ctx
 from deskfern.context import Ctx
 from sendora_core.adapters import AdapterError
 
+log = logging.getLogger("deskfern.webhooks")
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 MAX_BODY = 1_000_000  # a message event is a few kilobytes; anything near this is not one
 
@@ -32,7 +36,7 @@ async def body_of(request: Request) -> bytes:
 
 
 @router.post("/chatwoot", summary="Chatwoot message_created webhook (signature and time checked)")
-async def chatwoot(request: Request, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
+async def chatwoot(request: Request, s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_ctx)):
     raw = await body_of(request)
     secret = ctx.settings.chatwoot_webhook_secret
     signature, stamp = request.headers.get("x-chatwoot-signature", ""), request.headers.get("x-chatwoot-timestamp", "")
@@ -47,5 +51,12 @@ async def chatwoot(request: Request, s: Session = Depends(db), ctx: Ctx = Depend
     if inb is None:
         return {"ok": True, "ignored": True}
     t = desk.intake_ticket(s, ctx, inb)
-    return {"ok": True, "ticket_id": t.id if t else None}
+    ticket_id = t.id if t else None
+    try:
+        s.commit()  # saved BEFORE Chatwoot is told it arrived: a failed save is an error answer, so Chatwoot sends the message again instead of it being lost
+    except SQLAlchemyError as exc:
+        s.rollback()
+        log.warning("could not save a Chatwoot message: %s", type(exc).__name__)
+        raise HTTPException(503, "The message could not be saved. Try again.") from None
+    return {"ok": True, "ticket_id": ticket_id}
 

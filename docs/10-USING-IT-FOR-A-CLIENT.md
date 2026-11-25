@@ -40,11 +40,11 @@ Refund and account answers read each customer's plan and payment facts, so a rea
 | `name`, `plan`, `interval`, `seats` | Plan name, `monthly`, `annual` or `none`, and the number of seats. A missing plan is `free`. |
 | `first_paid`, `last_paid` | Dates like `2026-11-30`. |
 | `amount_minor`, `charge_id` | The last charge in the smallest unit (cents) and its id in the payment system. A paying customer needs the charge id so a refund can name it. |
-| `refunds_12m` | Refunds already given in the last 12 months. |
+| `refunds_12m` | Refunds already given in the last 12 months. The desk adds the refunds it paid itself on other payments. A file with no such column leaves the number as it is. |
 | `flag` | Empty, or `duplicate_charge` or `charged_after_cancel` (a billing problem you already know about, which the refund rules always honour). |
 | `key` | Optional. Your own id for the customer. |
 
-A row with a problem is skipped and reported by line number; the other rows are saved. The file is limited to 5000 rows, so split a bigger one.
+An existing customer is changed only in the columns the file has. A row with a problem is skipped and reported by line number (so is an address that was erased on request); the other rows are saved. The file is limited to 5000 rows, so split a bigger one.
 
 ## Handover
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Badge, Button, Card, notify } from "@sendora/ui-kit";
 import { ListSkeleton, LoadError, PageHead } from "@/components/Parts";
 import { get, post } from "@/lib/api";
-import { useRole } from "@/lib/hooks";
+import { useRole, useSettings } from "@/lib/hooks";
 import type { Integrations } from "@/lib/types";
 
 const TITLE: Record<string, string> = { helpdesk: "Help desk", payments: "Refunds (payments)", inbox: "Where email arrives", email: "Reply email", knowledge: "Knowledge sources" };
@@ -12,6 +12,8 @@ const STEPS = ["Pick what you use", "Add the settings on the server", "Test", "S
 
 export default function IntegrationsPage() {
   const { canWrite } = useRole();
+  const settings = useSettings();
+  const problems = settings.data?.problems ?? []; // what is wrong with this install's settings, and what the sign in limits and the mailbox have noticed; empty in the demo
   const q = useQuery({ queryKey: ["integrations"], queryFn: () => get<Integrations>("/integrations") });
   const [results, setResults] = useState<Record<string, string>>({});
   const test = useMutation({
@@ -25,6 +27,7 @@ export default function IntegrationsPage() {
   return (
     <div className="lh-page">
       <PageHead title="Integrations" sub="Connect your own tools. Settings are environment variables on the server, never typed into this page, so no key is ever stored in the browser." />
+      {problems.length ? <Card title="Needs attention"><ul className="lh-steps" role="status">{problems.map((p) => <li key={p}>{p}</li>)}</ul></Card> : null}
       <Card title="Four steps"><ol className="lh-steps">{STEPS.map((s) => <li key={s}>{s}</li>)}</ol></Card>
       {d.categories.map((c) => (
         <Card key={c} title={TITLE[c] ?? c}>

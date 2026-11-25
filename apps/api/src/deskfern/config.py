@@ -88,6 +88,9 @@ class Settings(BaseAppSettings):
     business_hours_end: int = Field(default=17, ge=1, le=24)
     business_days: str = "mon,tue,wed,thu,fri"
     office_timezone: str = "America/New_York"
+    # What the desk keeps, and who hears when a ticket needs a person (both are covered in docs 11 and 13).
+    retention_days: int = Field(default=730, ge=0, le=36500)  # RETENTION_DAYS: finished tickets older than this lose their words, once a day. 0 keeps everything for ever
+    escalation_notify_email: str = Field(default="", max_length=254)  # ESCALATION_NOTIFY_EMAIL: told by email when a ticket is handed to a person; empty (the default) sends nothing
     crawl_max_pages: int = 25
     crawl_max_depth: int = 3
     crawl_max_bytes: int = 1_000_000
@@ -177,6 +180,10 @@ class Settings(BaseAppSettings):
             out.append("DEMO_MODE is true but an owner password is set. The public demo password is switched off; set DEMO_MODE=false for a real install.")
         if not self.demo_mode:
             out += [p for p in self.identity_problems() + self.sending_problems() + self.approval_problems() if p not in out]
+        if self.escalation_notify_email.strip() and not EMAIL_LIKE.match(self.escalation_notify_email.strip()):
+            out.append("ESCALATION_NOTIFY_EMAIL is not an email address.")
+        if self.escalation_notify_email.strip() and self.email_adapter == "seed" and not self.demo_mode:
+            out.append("ESCALATION_NOTIFY_EMAIL is set but EMAIL_ADAPTER is seed, so no notice could be sent. Set EMAIL_ADAPTER=smtp.")
         if self.business_hours_end <= self.business_hours_start:
             out.append("BUSINESS_HOURS_END must be later than BUSINESS_HOURS_START.")
         try:

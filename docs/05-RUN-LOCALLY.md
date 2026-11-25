@@ -4,7 +4,7 @@
 
 ## Install
 
-1. Python 3.12 or newer (or uv, which fetches it), Node 22 or newer, pnpm (`corepack enable` or `npm i -g pnpm`). `make install` picks uv or python3.12 for you. On Ubuntu or Debian also run `sudo apt install python3-venv` first. On Windows use WSL 2 (Ubuntu) and work inside it: the commands here are for a Unix shell.
+1. Python 3.12 or newer (or uv, which fetches it), Node 22.18 or newer, pnpm (`corepack enable` or `npm i -g pnpm`). `make install` picks uv or python3.12 for you. On Ubuntu or Debian also run `sudo apt install python3-venv` first. On Windows use WSL 2 (Ubuntu) and work inside it: the commands here are for a Unix shell.
 2. `python3.12 -m venv .venv`, or with uv (no Python 3.12 needed first): `uv venv --python 3.12 .venv`
 3. `.venv/bin/pip install -c constraints.txt -e packages/core-py -e "apps/api[dev]"`, or with uv: `uv pip install --python .venv/bin/python -c constraints.txt -e packages/core-py -e "apps/api[dev]"` (add `-e "apps/api[postgres]"` if you use Postgres).
 4. `pnpm install` then `pnpm build`.
@@ -26,11 +26,11 @@ Run each in its own terminal, from the project folder.
 2. **Worker** (reads the mailbox, drafts tickets, crawls websites you add, pays approved refunds that were held back): `.venv/bin/python -m deskfern.worker`
 3. **Web:** `pnpm --filter web start` after `pnpm build`, or `pnpm dev` while you change code.
 
-Open http://localhost:3000.
+Open http://localhost:3000. On plain http, Safari (and any browser that does not keep Secure cookies for http) will not stay signed in unless the web app runs with `INSECURE_COOKIES=1`, which is for this computer only: never set it on a server. Chrome and Firefox treat localhost as safe.
 
 ## Tests
 
-- Python: `.venv/bin/python -m pytest`. The last full run is in `data/counts.json`: <!--n:tests.passed-->333<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped (it needs a Postgres, set `TEST_POSTGRES_URL`), coverage <!--n:tests.coverage_percent-->93.7<!--/n--> percent of the `deskfern` package.
+- Python: `.venv/bin/python -m pytest`. The last full run is in `data/counts.json`: <!--n:tests.passed-->429<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped (it needs a Postgres, set `TEST_POSTGRES_URL`), coverage <!--n:tests.coverage_percent-->93.9<!--/n--> percent of the `deskfern` package.
 - Seed check: `.venv/bin/python tools/score_seed.py` prints one line per planted problem.
 - Answer eval: `.venv/bin/python tools/eval_heldout.py` and `tools/eval_grounding.py` (see `ANSWER-EVAL.md`).
 - Browser tests: `pnpm e2e` (needs Google Chrome; it starts its own API and web server and a throwaway database). It tests the last build, so run `pnpm build` first. <!--n:e2e.tests-->38<!--/n--> tests.

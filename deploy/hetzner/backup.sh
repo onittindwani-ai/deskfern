@@ -3,6 +3,7 @@
 #   BACKUP_DIR       where the files go (default /var/backups/deskfern)
 #   BACKUP_COPY_TO   optional rsync target on ANOTHER machine, for example user@host:/backups/deskfern/ (a copy on the same disk is not a backup)
 set -eu
+umask 077  # the dump holds customer words and password hashes: readable by this user only
 cd "$(dirname "$0")/../.."
 OUT="${BACKUP_DIR:-/var/backups/deskfern}"
 mkdir -p "$OUT"

@@ -189,6 +189,26 @@ Where to put them: **local** in a `.env` file at the repo root (copied from `.en
 - Check it: `python3 tools/doctor.py` (add `--live` to test the real connection).
 - If it is wrong: Skipped pages are listed with the reason on the Knowledge page.
 
+## RETENTION_DAYS
+
+- Required: optional
+- What it does: How long the desk keeps what customers wrote. Once a day, a finished ticket (replied, refused, duplicate or closed) older than this many days loses its messages, its drafted and sent answers and its hand over notes, and so do the test cases made from agent edits that old. A ticket that a refund record points at stays as an empty shell, because the payment record has to keep its place. The default is 730 days (two years). 0 keeps everything for ever. Open tickets are never touched.
+- How to get it: Choose the period your privacy policy promises. Not needed to start.
+- Cost: Free.
+- Local, Vercel, Railway, Hetzner: set it in the API and worker environment (see the paragraph at the top). The web host does not need it.
+- Check it: `python3 tools/doctor.py`. The audit log shows a line `retention.purged` whenever the job removed something.
+- If it is wrong: Too short and old tickets vanish sooner than you want, too long (or 0) and customer words stay. Backups made before a purge still hold the words until they are rotated out (see `11-OPERATING-AND-BACKUPS.md`).
+
+## ESCALATION_NOTIFY_EMAIL
+
+- Required: optional
+- What it does: An address that is told by email when a ticket is handed to a person (a safety or security question, a refund the rules cannot decide, a ticket the desk could not draft). Without it nobody hears until someone opens the queue. It goes out through the same email adapter as replies, so draft mode and Pause all hold it back (it is sent later, once they are off). The message holds the ticket number, its kind, its urgency and the reason, never the customer's words. A count of tickets waiting for a person also shows in the bar at the top of every page. Switching it on starts from now: older hand overs are not mailed.
+- How to get it: Use a shared mailbox the support lead reads. It needs EMAIL_ADAPTER=smtp.
+- Cost: Free.
+- Local, Vercel, Railway, Hetzner: set it in the API and worker environment (see the paragraph at the top). The web host does not need it.
+- Check it: `python3 tools/doctor.py` lists it as a problem when it is not an address, or when EMAIL_ADAPTER is still seed.
+- If it is wrong: No notice arrives. Look at the Approvals and Audit pages and the settings problems list.
+
 ## CHATWOOT_BASE_URL, CHATWOOT_API_TOKEN, CHATWOOT_ACCOUNT_ID, CHATWOOT_WEBHOOK_SECRET
 
 - Required: required for Chatwoot

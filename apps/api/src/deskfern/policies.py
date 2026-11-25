@@ -8,10 +8,9 @@ once the block is lifted; the worker runs it every minute and the Approvals page
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import date
-
 import logging
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -61,14 +60,17 @@ def set_rule(session: Session, params: dict, actor: str) -> dict:
     return clean
 
 
-def decide_refund(rule: dict, c: Customer | None, today: date) -> RefundDecision:
+def decide_refund(rule: dict, c: Customer | None, today: date, paid_here: int = 0) -> RefundDecision:
+    """`paid_here` is the number of refunds this desk itself has paid, approved or asked for in the last 12 months on payments other than the one in question
+    (see `refunds_paid_here`). It is added to the number the billing file gave, because that number is only as fresh as the last import."""
     if c is None or c.plan == "free" or not c.amount_minor or not c.last_paid:
         return RefundDecision(False, "no_payment", 0, "There is no payment on file for this address, so there is nothing to refund.")
     for flag in rule["always_full"]:
         if c.flag == flag:
             return RefundDecision(True, flag, c.amount_minor, f"The payment system shows {FLAG_TEXT[flag]}, which is refunded in full.", {"flag": flag})
-    if c.refunds_12m >= rule["max_per_12m"]:
-        return RefundDecision(False, "one_refund", 0, f"This customer already had {c.refunds_12m} refund in the last 12 months and the rule allows {rule['max_per_12m']}.")
+    had = c.refunds_12m + paid_here
+    if had >= rule["max_per_12m"]:
+        return RefundDecision(False, "one_refund", 0, f"This customer already had {had} refund{'' if had == 1 else 's'} in the last 12 months and the rule allows {rule['max_per_12m']}.", {"billing_file": c.refunds_12m, "paid_here": paid_here})
     annual = c.interval == "annual"
     window = rule["annual_days"] if annual else rule["monthly_days"]
     paid = c.last_paid if annual else c.first_paid
@@ -78,11 +80,36 @@ def decide_refund(rule: dict, c: Customer | None, today: date) -> RefundDecision
     return RefundDecision(False, "outside_window", 0, f"The payment was {days} days ago and the {'annual' if annual else 'monthly'} window is {window} days.", {"days": days, "window": window})
 
 
+def refunds_by_customer(session: Session, today: date, customer_id: int | None = None) -> dict[int, list[str]]:
+    """The charge ids of refunds this desk has asked for, approved or paid in the last 12 months, by customer. A refund that was asked for counts too, so two
+    requests that are both waiting cannot both be approved. A rejected one does not count."""
+    since = datetime.combine(today, time.min, tzinfo=UTC) - timedelta(days=365)
+    stmt = select(Ticket.customer_id, PolicyAction.charge_id).join(Ticket, Ticket.id == PolicyAction.ticket_id).where(
+        PolicyAction.kind == "refund", PolicyAction.status.in_(ACTIVE_REFUND), Ticket.customer_id.is_not(None), PolicyAction.created_at >= since)
+    if customer_id is not None:
+        stmt = stmt.where(Ticket.customer_id == customer_id)
+    out: dict[int, list[str]] = {}
+    for cid, charge in session.execute(stmt):
+        out.setdefault(cid, []).append(charge)
+    return out
+
+
+def refunds_paid_here(session: Session, c: Customer | None, today: date, known: dict[int, list[str]] | None = None) -> int:
+    """How many refunds this desk handled for the customer in the last 12 months on a DIFFERENT payment than the current one. A customer who was refunded,
+    subscribed again and got a new charge id is counted; a second ticket about the very same payment is not (that is answered as a duplicate, see `refund_elsewhere`)."""
+    if c is None or c.id is None:
+        return 0
+    charges = (known if known is not None else refunds_by_customer(session, today, c.id)).get(c.id, [])
+    current = c.charge_id or f"ch_demo_{c.key}"
+    return sum(1 for ch in charges if ch != current)
+
+
 def simulate(session: Session, rule: dict, today: date) -> list[dict]:
     """What a rule would decide for every customer that has a payment. Used by the Policies page. Changes nothing."""
     out = []
+    known = refunds_by_customer(session, today)
     for c in session.scalars(select(Customer).where(Customer.plan != "free").order_by(Customer.key)):
-        d = decide_refund(rule, c, today)
+        d = decide_refund(rule, c, today, refunds_paid_here(session, c, today, known))
         out.append({"customer": c.name, "key": c.key, "plan": f"{c.plan} {c.interval}", "paid_on": str((c.first_paid if c.interval == "monthly" else c.last_paid) or ""), "eligible": d.eligible, "code": d.code, "amount_minor": d.amount_minor, "why": d.explanation})
     return out
 
@@ -143,7 +170,7 @@ def execute_refund(session: Session, ctx, action_id: int, actor: str = "deskfern
         raise ApprovalError("This refund is being paid by someone else right now. Look again in a moment.")
     adapter = with_settings(ctx.adapters.payments, ctx.effective(session))  # a copy: the shared adapter is never changed
     try:
-        ref = adapter.refund(charge_id=act.charge_id, amount_minor=act.amount_minor, reason="requested_by_customer", idempotency_key=f"deskfern-refund-{act.id}", metadata={"ticket": str(act.ticket_id)})
+        ref = adapter.refund(charge_id=act.charge_id, amount_minor=act.amount_minor, reason="requested_by_customer", idempotency_key=refund_key(session, act), metadata={"ticket": str(act.ticket_id)})
         act.status, act.external_id = "executed", ref
         record_audit(session, actor, "refund.executed", f"policy_action:{act.id}", {"amount_minor": act.amount_minor})
     except (DraftModeError, KillSwitchError) as exc:
@@ -156,6 +183,14 @@ def execute_refund(session: Session, ctx, action_id: int, actor: str = "deskfern
         raise
     session.flush()
     return act
+
+
+def refund_key(session: Session, act: PolicyAction) -> str:
+    """The payment system's idempotency key for one refund. It holds this install's own id, so two Deskfern installs on one Stripe account (a test copy and the real one,
+    or a restored backup) can never share a key and have one refund answered with the other's result. It is the same every time for the same refund, which is what makes a retry safe."""
+    from deskfern.privacy import install_value
+
+    return f"deskfern-{install_value(session, 'install_id', 6)}-refund-{act.id}"
 
 
 def blocked_reason(ctx, session: Session) -> str | None:

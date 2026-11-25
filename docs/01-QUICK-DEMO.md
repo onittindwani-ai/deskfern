@@ -1,6 +1,6 @@
 # Quick demo
 
-You need Python 3.12 (or uv), Node 22 and pnpm (`corepack enable` or `npm i -g pnpm`). Nothing is sent anywhere.
+You need Python 3.12 (or uv), Node 22.18 or newer and pnpm (`corepack enable` or `npm i -g pnpm`). Nothing is sent anywhere.
 
 1. `python3.12 -m venv .venv`. No python3.12 on your Mac? Use uv instead: `uv venv --python 3.12 .venv`.
 2. `.venv/bin/pip install -c constraints.txt -e packages/core-py -e "apps/api[dev]"`, or with uv: `uv pip install --python .venv/bin/python -c constraints.txt -e packages/core-py -e "apps/api[dev]"`. (Steps 1 and 2 together: `make install`.)

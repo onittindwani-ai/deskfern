@@ -12,7 +12,7 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from deskfern import ingest, policies
+from deskfern import ingest, policies, privacy
 from deskfern.models import Customer, Source
 from deskfern.util import clean_text, is_valid_email, normalize_email
 
@@ -80,6 +80,7 @@ def import_customers(session: Session, text: str) -> dict:
     reader.fieldnames = names
     report = {"created": 0, "updated": 0, "skipped": 0, "errors": [], "ignored_columns": [n for n in names if n and n not in COLUMNS]}
     seen: set[str] = set()
+    present = set(names)  # an existing customer is changed only in the columns the file has: a file without refunds_12m keeps the number the desk already knows
     for i, raw in enumerate(reader, start=2):  # line 1 is the header
         if i - 1 > MAX_ROWS:
             raise ImportProblem(f"More than {MAX_ROWS} rows. Split the file and import it in parts.")
@@ -89,6 +90,8 @@ def import_customers(session: Session, text: str) -> dict:
             if data["email"] in seen:
                 raise ValueError("this email appears twice in the file")
             seen.add(data["email"])
+            if privacy.is_erased(session, data["email"]):
+                raise ValueError("this address was erased on request and is not added again")
         except ValueError as exc:
             report["skipped"] += 1
             report["errors"].append({"line": i, "why": str(exc)})
@@ -104,7 +107,8 @@ def import_customers(session: Session, text: str) -> dict:
             report["created"] += 1
         else:
             for k, v in data.items():
-                setattr(cust, k, v)
+                if k in present:
+                    setattr(cust, k, v)
             report["updated"] += 1
     session.flush()
     return report

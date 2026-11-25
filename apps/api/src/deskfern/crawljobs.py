@@ -48,9 +48,12 @@ def run_crawl(session: Session, ctx: Ctx, job: CrawlJob) -> None:
         if src.uri.startswith("demo://"):
             if not st.demo_shortcuts:
                 raise netguard.UnsafeURL("The sample site (demo://) only works in the demo. Enter the address of your own help site.")
-            from fastapi.testclient import TestClient
+            try:
+                from fastapi.testclient import TestClient
 
-            from mock.source_mocks import SiteMock
+                from mock.source_mocks import SiteMock
+            except ImportError:  # an install built without the repository's mock folder
+                raise netguard.UnsafeURL("The sample site is not part of this install. Enter the address of your own help site, or paste text.") from None
 
             c = crawl_mod.Crawler(client=TestClient(SiteMock().app, base_url="http://help.example.test"), resolver=lambda h, p: ["93.184.216.34"], sleep=lambda x: None, max_pages=st.crawl_max_pages, max_depth=st.crawl_max_depth, max_bytes=st.crawl_max_bytes)
             start_url = "http://help.example.test/"

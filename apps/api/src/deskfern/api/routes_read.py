@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api", tags=["read"])
 
 
 @router.get("/overview", summary="Headline numbers")
-def overview(s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
+def overview(s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_ctx)):
     from sendora_core.models import Approval
 
     o = insights.overview(s, ctx.now(s))
@@ -27,7 +27,7 @@ def overview(s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
 
 
 @router.get("/tickets", summary="The queue with SLA timers")
-def tickets(status: str = "", q: str = Query("", max_length=200), limit: int = Query(300, ge=1, le=5000), s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
+def tickets(status: str = "", q: str = Query("", max_length=200), limit: int = Query(300, ge=1, le=5000), s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_ctx)):
     now = ctx.now(s)
     stmt = select(Ticket).outerjoin(Customer, Ticket.customer_id == Customer.id).order_by(Ticket.created_at.desc()).limit(limit)
     if q.strip():  # the search runs in the database BEFORE the row limit, so an old ticket is found even when the newest `limit` rows do not hold it
@@ -43,7 +43,7 @@ def tickets(status: str = "", q: str = Query("", max_length=200), limit: int = Q
 
 
 @router.get("/tickets/{tid}", summary="One ticket: conversation, draft with cited passages, meter, escalation, refund")
-def ticket(tid: int, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
+def ticket(tid: int, s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_ctx)):
     t = s.get(Ticket, tid)
     if t is None:
         raise HTTPException(404, "No such ticket.")
@@ -57,7 +57,7 @@ def ticket(tid: int, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
 
 
 @router.get("/knowledge", summary="Sources, documents, coverage")
-def knowledge(s: Session = Depends(db)):
+def knowledge(s: Session = Depends(db, scope="function")):
     srcs = [{"id": x.id, "kind": x.kind, "name": x.name, "uri": x.uri, "status": x.status, "last_synced_at": iso(x.last_synced_at), "error": x.error, "documents": len(x.documents)} for x in s.scalars(select(Source))]
     docs = [{"id": d.id, "title": d.title, "slug": d.slug, "kind": d.kind, "source_id": d.source_id, "updated_on": iso(d.updated_on), "outdated": d.outdated, "chunks": len(d.chunks), "words": len(d.text.split())} for d in s.scalars(select(Document).order_by(Document.title))]
     tk = s.query(Ticket).count() or 1
@@ -66,12 +66,12 @@ def knowledge(s: Session = Depends(db)):
 
 
 @router.get("/gaps", summary="Questions with no good source, grouped")
-def gaps(s: Session = Depends(db)):
+def gaps(s: Session = Depends(db, scope="function")):
     return [{"id": g.id, "label": g.label, "count": g.question_count, "samples": g.samples, "ticket_ids": g.ticket_ids, "status": g.status} for g in s.scalars(select(Gap).order_by(Gap.question_count.desc()))]
 
 
 @router.get("/documents/{did}", summary="A document with its chunks (the source viewer)")
-def document(did: int, s: Session = Depends(db)):
+def document(did: int, s: Session = Depends(db, scope="function")):
     d = s.get(Document, did)
     if d is None:
         raise HTTPException(404, "No such document.")
@@ -79,18 +79,18 @@ def document(did: int, s: Session = Depends(db)):
 
 
 @router.get("/policies/refund", summary="The refund rule")
-def refund_rule(s: Session = Depends(db)):
+def refund_rule(s: Session = Depends(db, scope="function")):
     return policies.get_rule(s)
 
 
 @router.get("/health", summary="Customer health and churn risk")
-def health(s: Session = Depends(db)):
+def health(s: Session = Depends(db, scope="function")):
     rows = s.execute(select(HealthScore, Customer).join(Customer, HealthScore.customer_id == Customer.id).order_by(HealthScore.score)).all()
     return [{"customer": c.name, "plan": f"{c.plan} {c.interval}".strip(), "email": c.email, "score": h.score, "risk": h.risk, "reasons": h.reasons, "customer_id": c.id} for h, c in rows]
 
 
 @router.get("/insights", summary="Topics, deflection, escalations")
-def insights_page(s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
+def insights_page(s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_ctx)):
     o = insights.overview(s, ctx.now(s))
     cats: dict[str, int] = {}
     cit = 0
@@ -110,7 +110,7 @@ EXPLAIN_CACHE_S = 300  # the same numbers get the same sentence for five minutes
 
 
 @router.get("/insights/explain", summary="The Insights numbers in plain words")
-def insights_explain(request: Request, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
+def insights_explain(request: Request, s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_ctx)):
     from deskfern import model_tasks
 
     facts = {**insights.overview(s, ctx.now(s)), "open_gaps": s.query(Gap).filter(Gap.status == "open").count()}
@@ -127,10 +127,10 @@ def insights_explain(request: Request, s: Session = Depends(db), ctx: Ctx = Depe
 
 
 @router.get("/testcases", summary="Regression test cases made from agent edits")
-def testcases(s: Session = Depends(db)):
+def testcases(s: Session = Depends(db, scope="function")):
     return [{"id": c.id, "question": c.question, "expected_text": c.expected_text, "expected_docs": c.expected_docs, "expected_facts": c.expected_facts, "origin": c.origin, "ticket_id": c.ticket_id, "last_result": c.last_result, "last_detail": c.last_detail} for c in s.scalars(select(TestCase).order_by(TestCase.id.desc()))]
 
 
 @router.get("/actions", summary="Refund requests and their state")
-def actions(s: Session = Depends(db)):
+def actions(s: Session = Depends(db, scope="function")):
     return [{"id": a.id, "ticket_id": a.ticket_id, "kind": a.kind, "amount_minor": a.amount_minor, "status": a.status, "approval_id": a.approval_id, "rationale": a.rationale} for a in s.scalars(select(PolicyAction).order_by(PolicyAction.id.desc()))]

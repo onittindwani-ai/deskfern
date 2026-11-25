@@ -11,7 +11,7 @@ A support desk that answers customer questions from your own help pages and show
 
 ## Try it with made up data
 
-See `docs/01-QUICK-DEMO.md`. You need Python 3.12, Node 22 and pnpm. No accounts, no keys, nothing leaves your computer.
+See `docs/01-QUICK-DEMO.md`. You need Python 3.12, Node 22.18 or newer and pnpm. No accounts, no keys, nothing leaves your computer.
 
 ## What was measured
 
@@ -19,7 +19,7 @@ All numbers come from `data/counts.json`, written by `tools/make_counts.py`.
 
 | What | Result |
 | --- | --- |
-| Python tests | <!--n:tests.passed-->333<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped, <!--n:tests.coverage_percent-->93.7<!--/n--> percent coverage |
+| Python tests | <!--n:tests.passed-->429<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped, <!--n:tests.coverage_percent-->93.9<!--/n--> percent coverage |
 | Browser tests | <!--n:e2e.tests-->38<!--/n--> tests (smoke, demo path, quality gates) |
 | Pages | <!--n:pages-->10<!--/n--> |
 | Screenshots | <!--n:screenshots-->35<!--/n--> at phone and desktop widths |

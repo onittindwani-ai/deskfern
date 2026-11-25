@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.1",
   "license": "MIT",
-  "engines": { "node": ">=22" },
+  "engines": { "node": ">=22.18" },
   "packageManager": "pnpm@12.21.0",
   "scripts": {
     "dev": "pnpm --filter web dev",

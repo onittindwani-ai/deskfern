@@ -10,6 +10,7 @@ import time
 from deskfern.config import Settings
 from deskfern.context import Ctx
 from deskfern.dbsetup import make_private_engine
+from deskfern import privacy
 from deskfern.jobs import make_handlers, schedule_due
 from sendora_core.db import Base, make_session_factory, session_scope
 from sendora_core.jobs import Worker
@@ -39,6 +40,7 @@ def main() -> None:
     if settings.database_url.startswith("sqlite"):
         Base.metadata.create_all(engine)
     ctx = Ctx(settings, make_session_factory(engine))
+    privacy.ensure_install_values(ctx.factory)
     worker = Worker(ctx.factory, make_handlers(ctx))
     stop = {"now": False}
     signal.signal(signal.SIGTERM, lambda *_: stop.update(now=True))

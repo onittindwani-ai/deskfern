@@ -23,7 +23,7 @@
 
 ## What the API host serves
 
-The Caddyfile publishes the API host for two paths only: `/api/webhooks/chatwoot` (so Chatwoot can post new messages) and `/health` (for an uptime check). Every other address on that host answers 404. The sign in and every other API call go through the app host, whose web server passes them on over the private compose network and puts the visitor's real address in the request. Compose sets `FORWARDED_ALLOW_IPS` to the private network ranges so the API trusts that address only from the web container, never from the internet. If you do not use Chatwoot, you can delete the whole API block and no API host is needed.
+The Caddyfile publishes the API host for two paths only: `/api/webhooks/chatwoot` (so Chatwoot can post new messages) and `/health` (for an uptime check). Every other address on that host answers 404. The sign in and every other API call go through the app host, whose web server passes them on over the private compose network and puts the visitor's real address in the request. Compose sets `FORWARDED_ALLOW_IPS` to the private network ranges so the API trusts that address only from the web container, never from the internet. If a CDN such as Cloudflare sits in front of Caddy, tell Caddy to trust the CDN's addresses (otherwise every visitor looks like the CDN and the sign in limits are shared by everyone, which a stranger can use to hold up the owner; the settings page warns about it). If you do not use Chatwoot, you can delete the whole API block and no API host is needed.
 
 ## Backups
 

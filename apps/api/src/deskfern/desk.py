@@ -9,10 +9,10 @@ from datetime import timedelta
 from pathlib import Path
 
 import httpx
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from deskfern import answering, ingest, policies, search, triage
+from deskfern import answering, ingest, policies, privacy, search, triage
 from deskfern.adapters.base import DeliveryUnknown, InboundTicket, with_settings
 from deskfern.datadir import REPO_DATA, data_dir
 from deskfern.models import Answer, Citation, Customer, Document, Escalation, Gap, Message, Source, TestCase, Ticket
@@ -58,6 +58,8 @@ def intake_ticket(session: Session, ctx, inb: InboundTicket) -> Ticket | None:
     if session.scalar(select(Ticket).where(Ticket.external_id == ext)):
         return None
     addr = clean_text(inb.email, 254).strip().lower()
+    if privacy.is_erased(session, addr):  # this person asked to be erased: their messages are not stored again
+        return None
     verified = sender_verified(ctx, inb)
     cust = _link_customer(session, addr) if verified else None
     t = Ticket(external_id=ext, channel=clean_text(inb.channel, 20), customer=cust, requester_email=addr, subject=clean_text(inb.subject, 300), created_at=inb.created_at or ctx.now(session), status="new", flags=[] if verified else [UNVERIFIED])
@@ -195,29 +197,96 @@ def process_new(session: Session, ctx) -> dict:
     return {"processed": n, "outcomes": out, "failed": failed}
 
 
+CURSOR_KEY = "imap_cursor"  # {"validity", "last_uid", "boot_until"}: the last mailbox message the desk stored (see adapters/imap.py)
+MARK_FAILS_KEY = "imap_mark_failures"  # how many runs in a row could not mark mail read
+MARK_FAILS_ALERT = 3
+
+
+def _get_state(session: Session, key: str, default: str = "") -> str:
+    from deskfern.models import State
+
+    row = session.get(State, key)
+    return row.value if row and row.value else default
+
+
+def _set_state(session: Session, key: str, value: str) -> None:
+    from deskfern.models import State
+
+    row = session.get(State, key)
+    if row is None:
+        session.add(State(key=key, value=value))
+    else:
+        row.value = value
+
+
+def _read_source(session: Session, source) -> tuple[list[InboundTicket], str, dict | None, list[int], list[str], dict]:
+    """What a source has that is new. A source that can say where it left off (`fetch_since`: the mailbox, Zendesk) is asked from its saved cursor; any other source lists what is new on its own."""
+    since = getattr(source, "fetch_since", None)
+    if since is not None:
+        key = getattr(source, "cursor_key", f"cursor_{type(source).__name__.lower()}")
+        try:
+            cursor = json.loads(_get_state(session, key, "{}"))
+        except ValueError:
+            cursor = {}
+        before = cursor if isinstance(cursor, dict) else {}
+        batch = since(before)
+        return batch.tickets, key, batch.cursor, batch.skipped, batch.notes, before
+    fn = getattr(source, "fetch_new", None) or getattr(source, "fetch_tickets", None)
+    return (fn() if fn else []), "", None, [], [], {}
+
+
+MAX_STORE_TRIES = 3  # runs a message that could not be stored is tried again before the cursor moves past it
+
+
+def _hold_back(cursor: dict, before: dict, failed_acks: list[str]) -> tuple[dict, str]:
+    """The cursor to save, and a sentence for the run result when something failed. A message that could not be stored (for example the database was busy) keeps the cursor
+    just before it, so the next run reads it again (the ones stored meanwhile are recognised and skipped); after MAX_STORE_TRIES runs it is given up on and named, so one damaged message cannot hold up all the mail behind it."""
+    numbers = sorted(int(a) for a in failed_acks if str(a).isdigit())
+    out = {k: v for k, v in cursor.items() if k != "retry"}
+    if not numbers:
+        return out, ""
+    first = numbers[0]
+    tries = int((before.get("retry") or {}).get("tries", 0)) + 1 if (before.get("retry") or {}).get("uid") == first else 1
+    if tries >= MAX_STORE_TRIES:
+        return out, f"{len(numbers)} message(s) in the inbox could not be stored after {MAX_STORE_TRIES} tries and were skipped (the first is uid {first}). They are still in the mailbox."
+    out["last_uid"] = min(int(out.get("last_uid", 0)), first - 1)
+    out["retry"] = {"uid": first, "tries": tries}
+    return out, ""
+
+
 def fetch_all(session: Session, ctx) -> dict:
     """Bring in new messages from the helpdesk and the inbox. Each message is stored on its own: a message that cannot be stored is counted and
-    skipped (and a mailbox message stays unread), the rest still arrive. Mailbox messages are marked read only after the whole batch is committed."""
+    skipped, the rest still arrive. The mailbox cursor (the last message looked at) is saved in the same transaction as the tickets, so it moves only when they are
+    committed; mailbox messages are marked read only after that commit, which is a courtesy to the people who share the mailbox and never what decides what is new."""
     stored, failed, errors = 0, 0, []
     for source in (ctx.adapters.helpdesk, ctx.adapters.inbox):
-        fn = getattr(source, "fetch_new", None) or getattr(source, "fetch_tickets", None)
         try:
-            batch = fn() if fn else []
+            batch, cursor_key, cursor, skipped, notes, before = _read_source(session, source)
         except (AdapterError, httpx.HTTPError) as exc:
             errors.append(str(exc)[:200] if isinstance(exc, AdapterError) else f"Could not reach {type(source).__name__} ({type(exc).__name__}).")  # one source being down must not stop the other
             continue
         acks: list[str] = []
+        failed_acks: list[str] = []
         for inb in batch:
             try:
                 with session.begin_nested():
                     made = intake_ticket(session, ctx, inb)
             except Exception as exc:
                 failed += 1
+                failed_acks.append(inb.ack)
                 log.warning("could not store one inbound message from %s: %s", inb.channel, type(exc).__name__)
                 continue
             stored += 1 if made else 0
             if inb.ack:
                 acks.append(inb.ack)
+        if cursor is not None:
+            cursor, gave_up = _hold_back(cursor, before, failed_acks)
+            _set_state(session, cursor_key, json.dumps(cursor))
+            errors += [gave_up] if gave_up else []
+        errors += notes
+        if skipped:  # not lost: they are still in the mailbox, but the desk cannot read them, so a person has to
+            shown = ", ".join(str(u) for u in skipped[:10]) + (" and more" if len(skipped) > 10 else "")
+            errors.append(f"{len(skipped)} message(s) in the inbox could not be read by the desk (too large or damaged, uid {shown}). Open them in the mailbox.")
         mark = getattr(source, "mark_seen", None)
         if acks and mark:
             session.info.setdefault("after_commit", []).append(lambda m=mark, a=tuple(acks): m(list(a)))
@@ -234,14 +303,64 @@ def run_after_commit(session: Session) -> int:
     if not pending:
         return 0
     session.commit()
-    done = 0
+    done, failures = 0, 0
     for call in pending:
         try:
             call()
             done += 1
-        except Exception as exc:  # harmless: the message is seen again next time and recognised as already stored
+        except Exception as exc:  # harmless for what is new (the cursor decides that), but a person should know the mailbox is never marked
+            failures += 1
             log.warning("could not mark mail as read: %s", type(exc).__name__)
+    before = int(_get_state(session, MARK_FAILS_KEY, "0") or 0)
+    after = 0 if failures == 0 else before + 1  # a run with no failure clears the count; consecutive failing runs add up
+    if after != before:
+        _set_state(session, MARK_FAILS_KEY, str(after))
+        session.commit()
+        if after == MARK_FAILS_ALERT:
+            log.warning("the inbox could not be marked read %d runs in a row (read only credentials?). New mail is still found by its number, so nothing is missed.", after)
     return done
+
+
+ESCALATION_KEY = "escalations_notified_upto"  # the highest hand over id the person has been told about
+MAX_NOTICES_PER_RUN = 20
+
+
+def notify_escalations(session: Session, ctx) -> dict:
+    """Tell ESCALATION_NOTIFY_EMAIL about tickets handed to a person, by the same email adapter as replies, so draft mode and Pause all hold it back (nothing is sent, and it is tried
+    again later). Off when the setting is empty. The notice holds no customer words: the ticket number, its kind, urgency and the reason the desk gave. Switching it on starts from now,
+    never from the old tickets."""
+    to = ctx.settings.escalation_notify_email.strip()
+    if not to:
+        return {"notified": 0}
+    last = _get_state(session, ESCALATION_KEY, "")
+    if last == "":
+        _set_state(session, ESCALATION_KEY, str(session.scalar(select(func.max(Escalation.id))) or 0))
+        return {"notified": 0}
+    settings, sent = ctx.effective(session), 0
+    for e in session.scalars(select(Escalation).where(Escalation.id > int(last), Escalation.status == "open").order_by(Escalation.id).limit(MAX_NOTICES_PER_RUN)):
+        t = session.get(Ticket, e.ticket_id)
+        if t is not None and t.status == "escalated":
+            body = (f"Ticket {t.external_id} ({t.category or 'uncategorised'}, {t.urgency} urgency) was handed to {e.owner}.\n\nReason: {e.reason}\n\n"
+                    f"Open the queue in {ctx.settings.company_name} Deskfern to read it. This notice holds none of the customer's words.")
+            try:
+                with_settings(ctx.adapters.email, settings).send(from_addr=settings.email_from, to=to, subject=f"A ticket needs a person ({t.external_id})", body=body)
+                sent += 1
+            except (DraftModeError, KillSwitchError):
+                break  # held back: not marked as told, so it goes out once draft mode and Pause all are off
+            except DeliveryUnknown:
+                log.warning("an escalation notice may or may not have been delivered")  # counted as told: a second copy would be worse than none
+            except AdapterError as exc:
+                log.warning("could not send an escalation notice: %s", type(exc).__name__)
+                break
+        _set_state(session, ESCALATION_KEY, str(e.id))
+    return {"notified": sent}
+
+
+def intake_warnings(session: Session) -> list[str]:
+    """Plain sentences for the settings page about what the mailbox run has noticed. Empty when all is well."""
+    if int(_get_state(session, MARK_FAILS_KEY, "0") or 0) >= MARK_FAILS_ALERT:
+        return ["The inbox could not be marked read in the last runs. If the mail account is read only, that is fine: new mail is found by its number and nothing is missed, but mail the desk has taken in stays unread in the mailbox."]
+    return []
 
 
 def demo_arrival(session: Session, ctx) -> str | None:
@@ -270,6 +389,12 @@ def demo_arrival(session: Session, ctx) -> str | None:
     return a["subject"]
 
 
+def ensure_redraftable(t: Ticket) -> None:
+    """Drafting again throws the live answer away. While a send is unconfirmed that answer is the only record of what may have left, so it stays until a person says whether the customer got it."""
+    if any(a.status == "sending" for a in t.answers):
+        raise ReplyInDoubt(IN_DOUBT)
+
+
 def latest_answer(t: Ticket) -> Answer | None:
     live = [a for a in t.answers if a.status != "discarded"]
     return live[-1] if live else None
@@ -292,7 +417,8 @@ def _deliver(ctx, t: Ticket, text: str, settings) -> None:
         raise DeliveryUnknown(f"The reply may or may not have been delivered ({type(exc).__name__}).") from exc
 
 
-CLAIMABLE = ("draft", "held", "edited")
+CLAIMABLE = ("draft", "held")  # "edited" means the reply WAS sent with the agent's edit: it is never claimed for a second send
+SENT_STATES = ("sent", "edited")
 IN_DOUBT = ("A reply to this ticket is being sent, or its send was interrupted before it could be confirmed, so it is not sent again blindly. Check the helpdesk or the mailbox. "
             "If the customer has the reply, press It was delivered. If not, press It was not delivered and send again.")
 
@@ -329,7 +455,7 @@ def send_reply(session: Session, ctx, t: Ticket, text: str, agent: str) -> dict:
         raise AlreadyAnswered("This ticket already has a reply. Draft it again if you really need to answer a second time.")
     edited = " ".join(text.split()) != " ".join(ans.text.split())
     previous = ans.status
-    if previous == "sent":
+    if previous in SENT_STATES:  # sent as it was, or sent with an edit: either way the customer has it, whatever state the ticket was moved to since (for example by Hand to a person)
         raise AlreadyAnswered("This ticket already has a reply. Draft it again if you really need to answer a second time.")
     if previous == "sending" or not _claim(session, ans, text, edited):
         raise ReplyInDoubt(IN_DOUBT)

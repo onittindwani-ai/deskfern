@@ -5,18 +5,19 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from deskfern import crawljobs, desk, insights, policies
+from deskfern import crawljobs, desk, insights, policies, privacy
 from deskfern.context import Ctx
 from sendora_core.events import record_event
 from sendora_core.jobs import Handler, enqueue
 
-INTERVALS = {"intake": 60, "insights": 600, "refunds": 60}
+INTERVALS = {"intake": 60, "insights": 600, "refunds": 60, "retention": 24 * 3600}
 
 
 def job_intake(session: Session, ctx: Ctx) -> dict:
     got = desk.fetch_all(session, ctx)
     out = desk.process_new(session, ctx)
-    return {**got, **out}
+    told = desk.notify_escalations(session, ctx)
+    return {**got, **out, **told}
 
 
 def job_insights(session: Session, ctx: Ctx) -> dict:
@@ -28,7 +29,12 @@ def job_refunds(session: Session, ctx: Ctx) -> dict:
     return policies.run_approved_refunds(session, ctx)
 
 
-JOBS = {"intake": job_intake, "insights": job_insights, "refunds": job_refunds}
+def job_retention(session: Session, ctx: Ctx) -> dict:
+    """Finished tickets older than RETENTION_DAYS lose their words (privacy.py)."""
+    return privacy.purge_old(session, ctx)
+
+
+JOBS = {"intake": job_intake, "insights": job_insights, "refunds": job_refunds, "retention": job_retention}
 
 
 def _run(fn, ctx: Ctx) -> Handler:

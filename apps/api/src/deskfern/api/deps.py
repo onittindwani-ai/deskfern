@@ -14,6 +14,9 @@ def get_ctx(request: Request) -> Ctx:
 
 
 def db(request: Request) -> Iterator[Session]:
+    """One session per request. Every route asks for it as `Depends(db, scope="function")`: the commit then happens BEFORE the answer is sent, so a save that
+    fails (a locked database, a value too long) is an error the caller sees, never a success message for a change that was lost. With the plain `Depends(db)`
+    the commit ran after the answer had gone out (tests/test_round3_commit.py reads every route to keep it that way)."""
     s = request.app.state.ctx.factory()
     try:
         yield s

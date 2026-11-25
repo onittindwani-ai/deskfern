@@ -5,6 +5,8 @@
 | The web app says the server is not reachable | `API_BASE_URL` wrong or API not running | Check `http://127.0.0.1:8000/health`, then the variable |
 | Sign in says wrong email or password | Hash missing or wrong, or demo mode off | Run `tools/hash_password.py`, set `OWNER_PASSWORD_HASH` |
 | Sign in says too many tries | Several wrong tries from your address, or someone is failing on purpose at the owner's account and you are signing in from a new address | Wait a minute and try once; from an address that signed in before, the account wide limit does not apply |
+| Safari signs you out at once on `http://localhost:3000` | The session cookie is Secure and Safari does not keep it for plain http | Start the web app with `INSECURE_COOKIES=1` on your own computer, never on a server |
+| The settings page says sign in limits are shared or every visitor looks like one address | The API does not trust the forwarded visitor address | Set `FORWARDED_ALLOW_IPS` on the API (`06`, `07`, `08`) |
 | Every ticket is handed to a person | Empty or tiny knowledge base | Press Read the folder now, or paste pages; check the Knowledge page |
 | The API stops at start and names a setting | The example or short `SESSION_SECRET` (with an owner password, or MODE live), an example owner address or company name, no way to send a reply, or no approver login in live mode with real payments | Fix the named setting (`04`); the message says which |
 | An email ticket says the sender is not verified | `INBOUND_AUTHSERV_ID` is empty or does not match your mail provider | See `04`, then press Confirm sender on the ticket once you have checked the person |

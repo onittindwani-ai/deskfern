@@ -5,9 +5,10 @@ WORKDIR /app
 COPY constraints.txt /app/constraints.txt
 COPY packages/core-py /app/packages/core-py
 COPY apps/api /app/apps/api
+COPY mock /app/mock
 COPY data /app/data
 RUN pip install --no-cache-dir -c /app/constraints.txt /app/packages/core-py "/app/apps/api[postgres]"
-ENV SEED_DIR=/app/data KNOWLEDGE_DIR=/data/knowledge
+ENV SEED_DIR=/app/data KNOWLEDGE_DIR=/data/knowledge PYTHONPATH=/app
 RUN useradd --create-home --uid 10001 app && mkdir -p /data/knowledge && chown -R app /data
 USER app
 WORKDIR /app/apps/api

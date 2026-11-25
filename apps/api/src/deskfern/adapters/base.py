@@ -6,7 +6,7 @@ import copy
 import ipaddress
 import re
 import socket
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from collections.abc import Callable
 from typing import Protocol
@@ -44,6 +44,17 @@ class InboundTicket:
     created_at: datetime | None = None
     verified: bool = False  # the channel proved the sender address itself (for example a mail server that passed DMARC)
     ack: str = ""  # what the source needs back once the message is safely stored (an IMAP uid), so mail is marked read only after that
+
+
+@dataclass
+class Batch:
+    """What one `fetch_since` run found. `cursor` is what to save, in the same transaction as the tickets, so the next run starts where this one stopped.
+    `skipped` are ids that could not be read (they stay at the source for a person), `notes` are plain sentences for the person who runs the desk (a gap, an order the vendor did not keep)."""
+
+    tickets: list[InboundTicket] = field(default_factory=list)
+    cursor: dict = field(default_factory=dict)
+    skipped: list[int] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
 
 class HelpdeskAdapter(Protocol):

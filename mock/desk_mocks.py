@@ -54,17 +54,23 @@ class ZendeskMock:
     def __init__(self, email="agent@example.test", token="zd-mock-token"):
         self.auth = "Basic " + base64.b64encode(f"{email}/token:{token}".encode()).decode()
         self.tickets, self.updates, self.page_size, self.reads = [], [], 100, []
+        self.honors_sort = True  # False imitates a service that ignores sort_by and sort_order
         self.app = FastAPI()
 
         @self.app.get("/api/v2/tickets.json")
-        def lst(request: Request, page: int = 1, authorization: str | None = Header(default=None)):
-            """Pages of `page_size`; `next_page` is a full address, or null on the last page, as the vendor's offset pagination describes it."""
+        def lst(request: Request, page: int = 1, sort_by: str | None = None, sort_order: str | None = None, authorization: str | None = Header(default=None)):
+            """Pages of `page_size`; `next_page` is a full address, or null on the last page, as the vendor's offset pagination describes it.
+            `sort_by=id&sort_order=desc` lists the newest first (and is carried on in `next_page`), when `honors_sort` is on."""
             if authorization != self.auth:
                 return _deny()
             self.reads.append(page)
-            chunk = self.tickets[(page - 1) * self.page_size: page * self.page_size]
-            more = page * self.page_size < len(self.tickets)
-            return {"tickets": chunk, "next_page": f"https://sub.zendesk.example.test/api/v2/tickets.json?page={page + 1}" if more else None}
+            rows = list(self.tickets)
+            if self.honors_sort and sort_by == "id" and sort_order in {"asc", "desc"}:
+                rows.sort(key=lambda t: t["id"], reverse=sort_order == "desc")
+            chunk = rows[(page - 1) * self.page_size: page * self.page_size]
+            more = page * self.page_size < len(rows)
+            tail = f"&sort_by={sort_by}&sort_order={sort_order}" if sort_by and sort_order else ""
+            return {"tickets": chunk, "next_page": f"https://sub.zendesk.example.test/api/v2/tickets.json?page={page + 1}{tail}" if more else None}
 
         @self.app.put("/api/v2/tickets/{tid}.json")
         async def upd(tid: int, request: Request, authorization: str | None = Header(default=None)):

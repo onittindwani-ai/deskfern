@@ -23,6 +23,8 @@ export default function TicketPage() {
   const [text, setText] = useState("");
   const [confirmEsc, setConfirmEsc] = useState(false);
   const ans = q.data?.answer ?? null;
+  const gone = ans?.status === "sent" || ans?.status === "edited"; // the customer has this reply (sent as it was, or with the agent's edit), whatever the ticket was moved to since
+  const inDoubt = ans?.status === "sending"; // a send nobody has confirmed: only "It was delivered" or "It was not delivered" can settle it
   useEffect(() => { if (ans) setText(ans.edited_text || ans.text); setActive(null); }, [ans?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const refresh = () => qc.invalidateQueries();
   const send = useMutation({ mutationFn: () => post<{ sent: boolean; held: boolean; edited: boolean }>(`/tickets/${id}/reply`, { text }), onSuccess: (r) => { notify.success((r.sent ? "Reply sent." : "Reply held. Nothing left this app, because draft mode or the kill switch is on. The ticket stays open.") + (r.edited ? " Your edit was saved as a test case." : "")); refresh(); }, onError: (e: Error) => { notify.error("Could not send", e.message); refresh(); } });
@@ -86,8 +88,8 @@ export default function TicketPage() {
               <Card title="Your reply">
                 <Textarea label="Reply to the customer" value={text} onChange={(e) => setText(e.target.value)} hint="If you change the words, the change is saved as a test case so the desk learns from it." />
                 <div className="lh-toolbar">
-                  <Button variant="primary" disabled={!canWrite || !text.trim() || t.status === "answered" || ans.status === "sending"} disabledReason={!canWrite ? "Viewers cannot send replies" : t.status === "answered" ? "This ticket already has a reply" : ans.status === "sending" ? "A send is waiting to be confirmed above" : "Write a reply first"} onClick={async () => { await send.mutateAsync(); }}>{t.status === "answered" ? "Replied" : "Send reply"}</Button>
-                  <Button disabled={!canWrite} disabledReason="Viewers cannot change tickets" onClick={async () => { await redraft.mutateAsync(); }}>Draft again</Button>
+                  <Button variant="primary" disabled={!canWrite || !text.trim() || t.status === "answered" || gone || inDoubt} disabledReason={!canWrite ? "Viewers cannot send replies" : t.status === "answered" || gone ? "This ticket already has a reply" : inDoubt ? "A send is waiting to be confirmed above" : "Write a reply first"} onClick={async () => { await send.mutateAsync(); }}>{t.status === "answered" || gone ? "Replied" : "Send reply"}</Button>
+                  <Button disabled={!canWrite || inDoubt} disabledReason={!canWrite ? "Viewers cannot change tickets" : "A send is waiting to be confirmed above. Say whether it was delivered first."} onClick={async () => { await redraft.mutateAsync(); }}>Draft again</Button>
                   {t.flags.includes("unverified_sender") ? <Button disabled={!canWrite} disabledReason="Viewers cannot change tickets" onClick={async () => { await confirm.mutateAsync(); }}>Confirm sender</Button> : null}
                   <Button disabled={!canWrite} disabledReason="Viewers cannot ask for refunds" onClick={async () => { await refund.mutateAsync(); }}>Ask for a refund</Button>
                   <Button variant="ghost" feedback={false} disabled={!canWrite} disabledReason="Viewers cannot hand tickets over" onClick={() => setConfirmEsc(true)}>Hand to a person</Button>

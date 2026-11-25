@@ -16,4 +16,4 @@ Knowledge sources -> ingest -> chunks (title, section, context)  v
 - **Groundedness:** seven checks per sentence, threshold 0.65 (see `ANSWER-EVAL.md`).
 - **Web:** Next.js 16 on the shared `@sendora/ui-kit`. It forwards to the API and never holds vendor keys.
 - **Adapters:** one interface per category in `apps/api/src/deskfern/adapters`. The Integrations page lists them.
-- **Tables:** <!--n:tables-->17<!--/n--> tables, all prefixed `lh_`.
+- **Tables:** <!--n:tables-->18<!--/n--> tables, all prefixed `lh_`.

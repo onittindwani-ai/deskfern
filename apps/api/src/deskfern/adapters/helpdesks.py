@@ -13,7 +13,7 @@ from urllib.parse import quote, urlparse
 
 import httpx
 
-from deskfern.adapters.base import DeliveryUnknown, InboundTicket, checked_ref, deliver, safe_base_url
+from deskfern.adapters.base import Batch, DeliveryUnknown, InboundTicket, checked_ref, deliver, safe_base_url
 from sendora_core.adapters import AdapterError
 from sendora_core.safety import write_action
 
@@ -111,6 +111,8 @@ class IntercomHelpdesk:
             _check(r, "Intercom")
             data = r.json()
             for c in data.get("conversations", []):
+                if c.get("state") not in {None, "open"}:  # closed and snoozed conversations are finished or parked: they are not new tickets
+                    continue
                 src = c.get("source") or {}
                 out.append(InboundTicket(f"ic-{c['id']}", "intercom", ((src.get("author") or {}).get("email") or "").lower(), src.get("subject") or "Conversation", _strip(src.get("body") or ""), (src.get("author") or {}).get("name", ""),
                                          datetime.fromtimestamp(c["created_at"], UTC) if c.get("created_at") else None))
@@ -137,6 +139,8 @@ class IntercomHelpdesk:
 
 
 class ZendeskHelpdesk:
+    cursor_key = "zendesk_cursor"  # the State row the desk saves {"max_id": the highest ticket number handled} in
+
     def __init__(self, settings, client: httpx.Client | None = None):
         self.settings = settings
         if not (settings.zendesk_subdomain and settings.zendesk_email and settings.zendesk_token):
@@ -163,6 +167,45 @@ class ZendeskHelpdesk:
             u = urlparse(str(nxt))
             url = u.path + (f"?{u.query}" if u.query else "")
         return out
+
+    def fetch_since(self, cursor: dict) -> Batch:
+        """The tickets that came after the highest ticket number handled so far, newest first, so a desk with a long history never hides its new tickets behind its old ones.
+
+        Asks for `sort_by=id&sort_order=desc` and reads pages until one holds a ticket already handled, or MAX_PAGES pages. The sort parameters are written from memory of
+        Zendesk's public docs and were tested only against a local imitation (UNVERIFIED live). If a page does not come back newest first the run says so, because then
+        tickets beyond the pages read could be missed. If more than MAX_PAGES pages of new tickets arrived since the last run, the oldest of them are named in `notes`, not lost silently."""
+        mark = int(cursor.get("max_id", 0) or 0)
+        out, newest, reached, ordered, more = [], mark, False, True, False
+        url = "/api/v2/tickets.json?sort_by=id&sort_order=desc"
+        for _ in range(MAX_PAGES):
+            r = self.client.get(url, headers=self._h())
+            _check(r, "Zendesk")
+            data = r.json()
+            rows = [t for t in data.get("tickets", []) if str(t.get("id", "")).isdigit()]
+            ids = [int(t["id"]) for t in rows]
+            if any(b > a for a, b in zip(ids, ids[1:])):
+                ordered = False
+            for t in rows:
+                if int(t["id"]) > mark:
+                    newest = max(newest, int(t["id"]))
+                    if t.get("status") in {None, "new", "open"}:
+                        out.append(InboundTicket(f"zd-{t['id']}", "zendesk", ((t.get("requester") or {}).get("email") or t.get("requester_email") or "").lower(), t.get("subject") or "", t.get("description") or "", "", _dt(t.get("created_at"))))
+            if ordered and ids and min(ids) <= mark:
+                reached = True
+                break
+            nxt = data.get("next_page")
+            more = bool(nxt)
+            if not nxt:
+                reached = True  # the list ended: everything there is was read
+                break
+            u = urlparse(str(nxt))
+            url = u.path + (f"?{u.query}" if u.query else "")
+        notes = []
+        if not ordered:
+            notes.append("Zendesk did not list tickets newest first, so tickets beyond the first pages read may be missed. Check the helpdesk for tickets the desk does not show (UNVERIFIED against a live Zendesk).")
+        elif not reached and more:
+            notes.append(f"More than {MAX_PAGES} pages of new Zendesk tickets arrived since the last run. The newest were read; the older ones were not. Open Zendesk for tickets the desk does not show.")
+        return Batch(tickets=out, cursor={"max_id": newest}, notes=notes)
 
     @write_action("helpdesk.reply")
     def post_reply(self, external_id: str, body: str, private: bool = False) -> str:
@@ -196,7 +239,8 @@ class FreshdeskHelpdesk:
             r = self.client.get("/api/v2/tickets", headers=self._h(), params={"page": page, "per_page": 100})
             _check(r, "Freshdesk")
             rows = r.json()
-            out += [InboundTicket(f"fd-{t['id']}", "freshdesk", (t.get("email") or "").lower(), t.get("subject") or "", t.get("description_text") or "", "", _dt(t.get("created_at"))) for t in rows]
+            out += [InboundTicket(f"fd-{t['id']}", "freshdesk", (t.get("email") or "").lower(), t.get("subject") or "", t.get("description_text") or "", "", _dt(t.get("created_at")))
+                    for t in rows if t.get("status") in {None, 2, 3}]  # 2 open and 3 pending; 4 resolved and 5 closed are finished
             if len(rows) < 100:
                 break
         return out

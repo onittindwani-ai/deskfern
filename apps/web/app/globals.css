@@ -8,6 +8,7 @@
 .lh-banner--danger { background: var(--sx-danger-bg); }
 .lh-banner--live { background: var(--sx-success-bg); }
 .lh-banner--info { background: var(--sx-accent-soft); }
+.lh-needs { margin-left: auto; color: inherit; white-space: nowrap; }
 .lh-two { display: grid; grid-template-columns: 38.2fr 61.8fr; gap: var(--sx-space-3); align-items: start; }
 .lh-two--rev { grid-template-columns: 61.8fr 38.2fr; }
 .lh-stack { display: grid; gap: var(--sx-space-2); }

@@ -2,6 +2,7 @@
 
   python -m deskfern.admin import-customers customers.csv     add or update customers (plan and payment facts that refund answers read)
   python -m deskfern.admin sync-knowledge                      read the KNOWLEDGE_DIR folder into the knowledge base
+  python -m deskfern.admin erase-customer person@example.com   erase one customer and their tickets on request (cannot be undone; see docs/11)
 
 ENV_FILE names another settings file than .env, as for the API and the worker.
 """
@@ -14,7 +15,7 @@ import os
 import sys
 from pathlib import Path
 
-from deskfern import importing
+from deskfern import importing, privacy
 from deskfern.config import Settings
 from deskfern.context import Ctx
 from deskfern.dbsetup import make_private_engine
@@ -28,7 +29,9 @@ def _ctx(settings: Settings) -> Ctx:
     engine = make_private_engine(settings.database_url)
     if settings.database_url.startswith("sqlite"):
         Base.metadata.create_all(engine)  # Postgres is set up with `alembic upgrade head`
-    return Ctx(settings, make_session_factory(engine))
+    ctx = Ctx(settings, make_session_factory(engine))
+    privacy.ensure_install_values(ctx.factory)
+    return ctx
 
 
 def run(argv: list[str], settings: Settings | None = None) -> int:
@@ -37,6 +40,8 @@ def run(argv: list[str], settings: Settings | None = None) -> int:
     c = sub.add_parser("import-customers", help="add or update customers from a CSV file")
     c.add_argument("file")
     sub.add_parser("sync-knowledge", help="read the KNOWLEDGE_DIR folder")
+    e = sub.add_parser("erase-customer", help="erase one customer and their tickets on request (cannot be undone)")
+    e.add_argument("email")
     args = ap.parse_args(argv)
     settings = settings or Settings(_env_file=os.environ.get("ENV_FILE", ".env"))
     settings.check_runtime()
@@ -45,9 +50,11 @@ def run(argv: list[str], settings: Settings | None = None) -> int:
         with session_scope(ctx.factory) as s:
             if args.cmd == "import-customers":
                 report = importing.import_customers(s, Path(args.file).read_text(encoding="utf-8-sig"))
+            elif args.cmd == "erase-customer":
+                report = privacy.erase_customer(s, args.email, "command line")
             else:
                 report = importing.sync_knowledge_folder(s, ctx)
-    except (importing.ImportProblem, OSError) as exc:
+    except (importing.ImportProblem, privacy.EraseBlocked, OSError) as exc:
         print(f"Nothing was changed. {exc}", file=sys.stderr)
         return 1
     print(json.dumps(report, indent=2))

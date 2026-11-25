@@ -1,7 +1,7 @@
 """A tiny fake SMTP and IMAP server for tests and the demo. Not a real mail server.
 
 SMTP: EHLO, AUTH PLAIN, MAIL, RCPT, DATA, RSET, NOOP, QUIT. Accepted messages land in `MailStore.outbox`.
-IMAP: CAPABILITY, LOGIN, SELECT, UID SEARCH (ALL, UNSEEN), UID FETCH (RFC822, RFC822.SIZE), UID STORE (flags), NOOP, LOGOUT.
+IMAP: CAPABILITY, LOGIN, SELECT (says its UIDVALIDITY), UID SEARCH (ALL, UNSEEN, UID a:b or a:*), UID FETCH (RFC822, RFC822.SIZE), UID STORE (flags), NOOP, LOGOUT.
 Messages in `MailStore.inbox` are what the IMAP client sees. It speaks only what Python's smtplib and imaplib send.
 """
 
@@ -19,6 +19,7 @@ class MailStore:
     inbox: list[dict] = field(default_factory=list)  # visible to IMAP: {"uid","raw","seen"}
     lock: threading.Lock = field(default_factory=threading.Lock)
     users: dict[str, str] = field(default_factory=lambda: {"demo": "demo-password"})
+    uidvalidity: int = 4001  # a real server changes this number when it renumbers a mailbox
 
     def deliver(self, raw: bytes) -> int:
         with self.lock:
@@ -102,13 +103,19 @@ class _IMAP(socketserver.StreamRequestHandler):
                     self._w(tag.encode() + b" NO invalid credentials\r\n")
             elif cmd == "SELECT" and authed:
                 n = len(self.store.inbox)
-                self._w(f"* {n} EXISTS\r\n* 0 RECENT\r\n{tag} OK [READ-WRITE] selected\r\n".encode())
+                self._w(f"* {n} EXISTS\r\n* 0 RECENT\r\n* OK [UIDVALIDITY {self.store.uidvalidity}] UIDs valid\r\n{tag} OK [READ-WRITE] selected\r\n".encode())
             elif cmd == "UID" and authed:
                 sub, _, a2 = arg.partition(" ")
                 sub = sub.upper()
                 if sub == "SEARCH":
                     with self.store.lock:
-                        uids = [m["uid"] for m in self.store.inbox if ("UNSEEN" not in a2.upper() or not m["seen"])]
+                        crit = a2.upper()
+                        span = re.search(r"UID (\d+):(\d+|\*)", crit)  # a real server answers "n:*" with the newest message even when it is older than n
+                        top = max([m["uid"] for m in self.store.inbox] or [0])
+                        lo, hi = (int(span.group(1)), top if span.group(2) == "*" else int(span.group(2))) if span else (1, top)
+                        uids = [m["uid"] for m in self.store.inbox if ("UNSEEN" not in crit or not m["seen"]) and lo <= m["uid"] <= hi]
+                        if span and span.group(2) == "*" and not uids and self.store.inbox:
+                            uids = [top]
                     self._w(("* SEARCH " + " ".join(map(str, uids))).strip().encode() + b"\r\n" + tag.encode() + b" OK done\r\n")
                 elif sub == "FETCH":
                     uid = int(a2.split(" ", 1)[0])

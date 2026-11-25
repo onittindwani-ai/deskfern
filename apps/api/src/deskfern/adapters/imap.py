@@ -1,7 +1,12 @@
 """A mailbox over IMAP (read unseen mail) and a sender over SMTP. Works with Gmail (app password), Outlook and most hosts.
 
 Both connections verify the server's certificate and host name. A plain (unencrypted) connection is accepted only to a mail server on this same
-computer. Mail is read with PEEK, so it stays unread until `mark_seen` is called, which the desk does only after the message is safely stored.
+computer. Mail is read with PEEK, so reading never changes a flag.
+
+What is new is decided by the message's UID, not by the unread flag. A person who opens a customer's mail on a phone before the next run does not hide it from the desk, and a mailbox
+that refuses to mark mail read (read only credentials) cannot make the same 50 messages come back and starve the new ones. `fetch_since` takes the last UID the desk stored (and the mailbox's
+UIDVALIDITY, which changes when a mailbox is renumbered) and reads what came after it. The very first run reads the mail that is unread right now and nothing older.
+`mark_seen` is still called after the messages are stored, so a person can see in the mailbox what the desk has taken in.
 """
 
 from __future__ import annotations
@@ -17,7 +22,7 @@ from email.message import EmailMessage
 from email.policy import default as default_policy
 from email.utils import make_msgid, parseaddr
 
-from deskfern.adapters.base import DeliveryUnknown, InboundTicket
+from deskfern.adapters.base import Batch, DeliveryUnknown, InboundTicket
 from deskfern.util import clean_header
 from sendora_core.adapters import AdapterError
 from sendora_core.safety import write_action
@@ -26,6 +31,7 @@ log = logging.getLogger("deskfern.imap")
 RESULT = re.compile(r"^\s*([A-Za-z][A-Za-z0-9-]*)\s*=\s*([A-Za-z]+)")
 MAX_BODY = 20000
 MAX_PER_RUN = 50  # messages taken in one run; the rest are read in the next run, so a flooded inbox never fills memory or the database in one go
+MAX_EXAMINED_PER_RUN = 300  # messages looked at in one run (their size is asked for first), so a long run of oversize mail cannot hold up the small ones for ever
 MAX_MESSAGE_BYTES = 2_000_000  # a message larger than this is not downloaded (its size is asked for first); it stays unread in the inbox for a person
 _SIZE = re.compile(rb"RFC822\.SIZE\s+(\d+)", re.I)
 
@@ -80,6 +86,18 @@ def _text_of(msg) -> str:
 
             text = parse_html(_content(html))[1]
     return text[:MAX_BODY]
+
+
+def _uidvalidity(c) -> str:
+    """The mailbox's UIDVALIDITY as text (it changes when the mailbox is renumbered), or "" when the server did not say."""
+    _, data = c.response("UIDVALIDITY")
+    return (data[0] or b"").decode(errors="replace").strip() if data and data[0] else ""
+
+
+def _highest_uid(c) -> int:
+    _, data = c.uid("SEARCH", None, "ALL")
+    ids = [int(x) for x in (data[0] or b"").split()]
+    return max(ids) if ids else 0
 
 
 def _size_of(c, uid: str) -> int | None:
@@ -144,37 +162,100 @@ def _imap_failure(exc: Exception, host: str) -> AdapterError:
 
 
 class ImapInbox(_Base):
-    def fetch_tickets(self) -> list[InboundTicket]:
-        """Unread mail, left unread. Each ticket carries its IMAP uid in `ack`; call `mark_seen` with those once the tickets are stored."""
+    cursor_key = "imap_cursor"  # the State row the desk saves this mailbox's cursor in
+
+    def _read_one(self, c, uid: str) -> InboundTicket | None:
+        """One message as a ticket, or None when it is too large or empty. Raises for a message that cannot be read."""
+        size = _size_of(c, uid)
+        if size is not None and size > MAX_MESSAGE_BYTES:
+            log.warning("left one message in the mailbox because it is larger than %d bytes (uid %s)", MAX_MESSAGE_BYTES, uid)
+            return None
+        _, parts = c.uid("FETCH", uid, "(BODY.PEEK[])")  # PEEK: reading does not mark the mail as read
+        if not parts or not parts[0] or len(parts[0][1]) > MAX_MESSAGE_BYTES:
+            return None
+        msg = email.message_from_bytes(parts[0][1], policy=default_policy)
+        sender = parseaddr(str(msg["From"] or ""))
+        return InboundTicket(f"em-{clean_header(str(msg['Message-ID'] or uid))}", "email", sender[1].lower(), clean_header(str(msg["Subject"] or "(no subject)")), _text_of(msg), sender[0],
+                             verified=sender_is_authenticated(msg, self.settings.inbound_authserv_id), ack=uid)
+
+    def _connect(self):
         self._need("imap_host", "smtp_user")
+        c = self._imap()
+        c.select("INBOX")
+        return c
+
+    @staticmethod
+    def _logout(c) -> None:
+        try:
+            c.logout()
+        except Exception:
+            pass
+
+    def fetch_tickets(self) -> list[InboundTicket]:
+        """Unread mail, left unread (the older, stateless way: the desk itself uses `fetch_since`). Each ticket carries its IMAP uid in `ack`."""
         out: list[InboundTicket] = []
         try:
-            c = self._imap()
+            c = self._connect()
             try:
-                c.select("INBOX")
                 _, data = c.uid("SEARCH", None, "UNSEEN")
                 for uid in (data[0] or b"").split():
                     if len(out) >= MAX_PER_RUN:
-                        break  # the rest wait for the next run; they stay unread
+                        break  # the rest wait for the next run
                     try:
-                        size = _size_of(c, uid.decode())
-                        if size is not None and size > MAX_MESSAGE_BYTES:
-                            log.warning("left one message unread because it is larger than %d bytes (uid %s)", MAX_MESSAGE_BYTES, uid.decode(errors="replace"))
-                            continue  # not counted towards the cap, so big messages can never block the small ones behind them
-                        _, parts = c.uid("FETCH", uid.decode(), "(BODY.PEEK[])")  # PEEK: reading does not mark the mail as read
-                        if not parts or not parts[0] or len(parts[0][1]) > MAX_MESSAGE_BYTES:
-                            continue
-                        msg = email.message_from_bytes(parts[0][1], policy=default_policy)
-                        sender = parseaddr(str(msg["From"] or ""))
-                        out.append(InboundTicket(f"em-{clean_header(str(msg['Message-ID'] or uid.decode()))}", "email", sender[1].lower(), clean_header(str(msg["Subject"] or "(no subject)")), _text_of(msg), sender[0],
-                                                 verified=sender_is_authenticated(msg, self.settings.inbound_authserv_id), ack=uid.decode()))
-                    except Exception as exc:  # one unreadable message must not hide the rest; it stays unread so nothing is lost
+                        t = self._read_one(c, uid.decode())
+                    except Exception as exc:  # one unreadable message must not hide the rest
                         log.warning("skipped one unreadable message (uid %s): %s", uid.decode(errors="replace"), type(exc).__name__)
+                        continue
+                    if t is not None:
+                        out.append(t)
             finally:
-                try:
-                    c.logout()
-                except Exception:
-                    pass
+                self._logout(c)
+        except AdapterError:
+            raise
+        except (imaplib.IMAP4.error, ssl.SSLError, OSError) as exc:
+            raise _imap_failure(exc, self.settings.imap_host) from exc
+        return out
+
+    def fetch_since(self, cursor: dict) -> Batch:
+        """The mail that came after the last message the desk stored. `cursor` is {"validity", "last_uid", "boot_until"} as returned by the run before, or empty on the first run.
+
+        First run (or the mailbox was renumbered, its UIDVALIDITY changed): the mail that is unread right now is read, up to the highest UID the mailbox has at that moment,
+        and nothing older. After that every message with a higher UID than the last one looked at is read, read or unread, so mail a person opened first is not lost. A message that
+        cannot be read, or is too large, is listed in `skipped` and the cursor moves past it, so it can never block the mail behind it."""
+        out = Batch()
+        try:
+            c = self._connect()
+            try:
+                validity = _uidvalidity(c)
+                if str(cursor.get("validity", "")) != validity:
+                    if cursor.get("validity"):
+                        log.warning("the mailbox was renumbered (UIDVALIDITY changed); reading its unread mail again. Mail already stored is recognised and not made into a second ticket.")
+                    cursor = {"validity": validity, "last_uid": 0, "boot_until": _highest_uid(c)}
+                last, until = int(cursor.get("last_uid", 0)), int(cursor.get("boot_until", 0))
+                criteria = f"UNSEEN UID {last + 1}:{until}" if last < until else f"UID {last + 1}:*"
+                _, data = c.uid("SEARCH", None, criteria)
+                uids = sorted(u for u in (int(x) for x in (data[0] or b"").split()) if u > last)  # "n:*" always includes the newest message, even when it is older than n
+                examined = 0
+                for uid in uids:
+                    if len(out.tickets) >= MAX_PER_RUN or examined >= MAX_EXAMINED_PER_RUN:
+                        break
+                    examined += 1
+                    last = uid
+                    try:
+                        t = self._read_one(c, str(uid))
+                    except Exception as exc:
+                        log.warning("skipped one unreadable message (uid %s): %s", uid, type(exc).__name__)
+                        t = None
+                    if t is None:
+                        out.skipped.append(uid)
+                    else:
+                        out.tickets.append(t)
+                else:
+                    if last < until:
+                        last = until  # nothing unread is left in the range that was already in the mailbox on the first run
+                out.cursor = {"validity": validity, "last_uid": last, "boot_until": until}
+            finally:
+                self._logout(c)
         except AdapterError:
             raise
         except (imaplib.IMAP4.error, ssl.SSLError, OSError) as exc:
