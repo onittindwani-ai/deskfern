@@ -26,7 +26,7 @@ def hashed_vec(tokens: list[str]) -> dict[str, float]:
     counts: dict[int, float] = {}
     grams = tokens + [f"{a}_{b}" for a, b in zip(tokens, tokens[1:])]
     for g in grams:
-        h = int(hashlib.md5(g.encode()).hexdigest()[:8], 16) % DIM
+        h = int(hashlib.md5(g.encode(), usedforsecurity=False).hexdigest()[:8], 16) % DIM
         counts[h] = counts.get(h, 0.0) + 1.0
     vec = {k: 1.0 + math.log(v) for k, v in counts.items()}
     norm = math.sqrt(sum(v * v for v in vec.values())) or 1.0

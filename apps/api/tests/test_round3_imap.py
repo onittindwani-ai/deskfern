@@ -238,4 +238,7 @@ def test_a_message_that_never_saves_is_named_and_stops_holding_up_the_rest(tmp_p
         assert any("could not be stored after 3 tries" in e and "uid 2" in e for e in last["errors"])
         assert "retry" not in cursor(ctx) and cursor(ctx)["last_uid"] == 3
         srv.store.deliver(mail(50))
-        assert cycle(ctx)["fetched"] == 1 and tickets(ctx) == 3  # the mail behind it flows again
+        assert cycle(ctx)["fetched"] == 1 and tickets(ctx) == 4  # the mail behind it flows again; the fourth ticket is the small one that tells a person about the message that never stored (round 4)
+        with ctx.factory() as s:
+            stub = s.scalar(select(Ticket).where(Ticket.subject.like("Could not be stored by the desk%")))
+            assert stub is not None and stub.status == "escalated" and "unstorable" in stub.flags and stub.subject.endswith("Question 1")

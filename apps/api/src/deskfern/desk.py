@@ -10,10 +10,11 @@ from pathlib import Path
 
 import httpx
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from deskfern import answering, ingest, policies, privacy, search, triage
-from deskfern.adapters.base import DeliveryUnknown, InboundTicket, with_settings
+from deskfern import answering, ingest, intake, policies, privacy, search, triage
+from deskfern.adapters.base import Batch, DeliveryUnknown, InboundTicket, with_settings
 from deskfern.datadir import REPO_DATA, data_dir
 from deskfern.models import Answer, Citation, Customer, Document, Escalation, Gap, Message, Source, TestCase, Ticket
 from deskfern.util import aware, clean_text, safe_external_id
@@ -50,7 +51,8 @@ def sender_verified(ctx, inb: InboundTicket) -> bool:
 
 
 def intake_ticket(session: Session, ctx, inb: InboundTicket) -> Ticket | None:
-    """Store a message from any channel as a ticket. A message already stored (same external id) is ignored.
+    """Store a message from any channel as a ticket. A message already stored (same external id) is ignored. A message from an erased address, or one the source could not read,
+    becomes a stub ticket that holds none of its words (intake.py).
 
     Everything from outside is cleaned first (no NUL byte, ids and fields cut to their column width). A sender that is not verified is never
     matched to a customer record: anyone can type someone else's address into a From line or a chat form."""
@@ -58,8 +60,10 @@ def intake_ticket(session: Session, ctx, inb: InboundTicket) -> Ticket | None:
     if session.scalar(select(Ticket).where(Ticket.external_id == ext)):
         return None
     addr = clean_text(inb.email, 254).strip().lower()
-    if privacy.is_erased(session, addr):  # this person asked to be erased: their messages are not stored again
-        return None
+    if privacy.is_erased(session, addr):  # this person asked to be erased: their words and address are not stored again, but a person is told a message came (never silently dropped)
+        return intake.stub_ticket(session, ctx, inb, intake.ERASED_FLAG)
+    if inb.stub:  # the source could not read this message: a small ticket tells a person, with the clock running
+        return intake.stub_ticket(session, ctx, inb, inb.stub)
     verified = sender_verified(ctx, inb)
     cust = _link_customer(session, addr) if verified else None
     t = Ticket(external_id=ext, channel=clean_text(inb.channel, 20), customer=cust, requester_email=addr, subject=clean_text(inb.subject, 300), created_at=inb.created_at or ctx.now(session), status="new", flags=[] if verified else [UNVERIFIED])
@@ -219,8 +223,12 @@ def _set_state(session: Session, key: str, value: str) -> None:
         row.value = value
 
 
-def _read_source(session: Session, source) -> tuple[list[InboundTicket], str, dict | None, list[int], list[str], dict]:
-    """What a source has that is new. A source that can say where it left off (`fetch_since`: the mailbox, Zendesk) is asked from its saved cursor; any other source lists what is new on its own."""
+IMAP_HOLD = {"key": "last_uid", "what": "message(s) in the inbox", "ref": "uid", "where": "the mailbox"}  # how a source with a cursor names what it holds: which cursor field to hold back, and the words for the note
+
+
+def _read_source(session: Session, source) -> tuple[Batch, str, dict]:
+    """What a source has that is new, the State key of its cursor ("" for a source with none) and the cursor as it was. A source that can say where it left off (`fetch_since`: the mailbox, Zendesk)
+    is asked from its saved cursor; any other source lists what is new on its own (`fetch_batch`, which can also hand back notes, or the older `fetch_new` and `fetch_tickets`)."""
     since = getattr(source, "fetch_since", None)
     if since is not None:
         key = getattr(source, "cursor_key", f"cursor_{type(source).__name__.lower()}")
@@ -229,18 +237,22 @@ def _read_source(session: Session, source) -> tuple[list[InboundTicket], str, di
         except ValueError:
             cursor = {}
         before = cursor if isinstance(cursor, dict) else {}
-        batch = since(before)
-        return batch.tickets, key, batch.cursor, batch.skipped, batch.notes, before
+        return since(before), key, before
+    whole = getattr(source, "fetch_batch", None)
+    if whole is not None:
+        return whole(), "", {}
     fn = getattr(source, "fetch_new", None) or getattr(source, "fetch_tickets", None)
-    return (fn() if fn else []), "", None, [], [], {}
+    return Batch(tickets=list(fn()) if fn else []), "", {}
 
 
-MAX_STORE_TRIES = 3  # runs a message that could not be stored is tried again before the cursor moves past it
+MAX_STORE_TRIES = intake.MAX_STORE_TRIES  # runs a message that could not be stored is tried again before the cursor moves past it
 
 
-def _hold_back(cursor: dict, before: dict, failed_acks: list[str]) -> tuple[dict, str]:
-    """The cursor to save, and a sentence for the run result when something failed. A message that could not be stored (for example the database was busy) keeps the cursor
-    just before it, so the next run reads it again (the ones stored meanwhile are recognised and skipped); after MAX_STORE_TRIES runs it is given up on and named, so one damaged message cannot hold up all the mail behind it."""
+def _hold_back(cursor: dict, before: dict, failed_acks: list[str], hold: dict | None = None) -> tuple[dict, str]:
+    """The cursor to save, and a sentence for the run result when something was given up on. A message that could not be stored (for example the database was busy) keeps the cursor
+    just before it (`hold["key"]`: the last mailbox uid, or the highest Zendesk ticket number), so the next run reads it again (the ones stored meanwhile are recognised and skipped);
+    after MAX_STORE_TRIES runs it is given up on and named, so one damaged message cannot hold up all the mail behind it."""
+    hold = hold or IMAP_HOLD
     numbers = sorted(int(a) for a in failed_acks if str(a).isdigit())
     out = {k: v for k, v in cursor.items() if k != "retry"}
     if not numbers:
@@ -248,49 +260,96 @@ def _hold_back(cursor: dict, before: dict, failed_acks: list[str]) -> tuple[dict
     first = numbers[0]
     tries = int((before.get("retry") or {}).get("tries", 0)) + 1 if (before.get("retry") or {}).get("uid") == first else 1
     if tries >= MAX_STORE_TRIES:
-        return out, f"{len(numbers)} message(s) in the inbox could not be stored after {MAX_STORE_TRIES} tries and were skipped (the first is uid {first}). They are still in the mailbox."
-    out["last_uid"] = min(int(out.get("last_uid", 0)), first - 1)
+        return out, f"{len(numbers)} {hold['what']} could not be stored after {MAX_STORE_TRIES} tries and were skipped (the first is {hold['ref']} {first}). They are still in {hold['where']}, and each is now a ticket that needs a person."
+    out[hold["key"]] = min(int(out.get(hold["key"], 0)), first - 1)
     out["retry"] = {"uid": first, "tries": tries}
     return out, ""
 
 
+def _source_problem(name: str, exc: Exception) -> str:
+    if isinstance(exc, AdapterError):
+        return str(exc)[:200]
+    if isinstance(exc, httpx.HTTPError):
+        return f"Could not reach {name} ({type(exc).__name__})."
+    return f"{name} gave an answer the desk could not read ({type(exc).__name__}). Nothing was taken in from it this run."  # one vendor's odd answer must not stop the other source or the drafting
+
+
+def _stub_failed(session: Session, ctx, items: list[InboundTicket]) -> int:
+    """A message the desk gave up storing becomes a stub ticket, so a person knows it exists. If even the stub cannot be stored, the note in the settings is what is left."""
+    made = 0
+    for inb in items:
+        try:
+            with session.begin_nested():
+                made += 1 if intake.stub_ticket(session, ctx, inb, "unstorable", MAX_STORE_TRIES) else 0
+        except Exception as exc:
+            log.warning("could not make a stub for a message that would not store: %s", type(exc).__name__)
+    return made
+
+
 def fetch_all(session: Session, ctx) -> dict:
     """Bring in new messages from the helpdesk and the inbox. Each message is stored on its own: a message that cannot be stored is counted and
-    skipped, the rest still arrive. The mailbox cursor (the last message looked at) is saved in the same transaction as the tickets, so it moves only when they are
-    committed; mailbox messages are marked read only after that commit, which is a courtesy to the people who share the mailbox and never what decides what is new."""
-    stored, failed, errors = 0, 0, []
+    skipped, the rest still arrive. The cursor (the last message looked at) is saved in the same transaction as the tickets, so it moves only when they are
+    committed; mailbox messages are marked read only after that commit, which is a courtesy to the people who share the mailbox and never what decides what is new.
+
+    Nothing is lost without a trace. A source that fails, or answers with something unreadable, is named and the other source is still read (and the new tickets are still drafted by the
+    caller). A message that is too large, unreadable, from an erased address, or never stores becomes a stub ticket that needs a person. Every note is saved for the settings page and the Overview."""
+    stored, failed, stubs, errors = 0, 0, 0, []
+    now = ctx.now(session)
     for source in (ctx.adapters.helpdesk, ctx.adapters.inbox):
+        name = type(source).__name__
         try:
-            batch, cursor_key, cursor, skipped, notes, before = _read_source(session, source)
-        except (AdapterError, httpx.HTTPError) as exc:
-            errors.append(str(exc)[:200] if isinstance(exc, AdapterError) else f"Could not reach {type(source).__name__} ({type(exc).__name__}).")  # one source being down must not stop the other
+            batch, cursor_key, before = _read_source(session, source)
+        except SQLAlchemyError:
+            raise
+        except Exception as exc:
+            problem = _source_problem(name, exc)
+            errors.append(problem)
+            intake.record_run(session, now, name, [problem], [])
             continue
+        hold = getattr(source, "hold", IMAP_HOLD)
         acks: list[str] = []
-        failed_acks: list[str] = []
-        for inb in batch:
+        failed_items: list[InboundTicket] = []
+        stubbed: list[InboundTicket] = []
+        for inb in batch.tickets:
             try:
                 with session.begin_nested():
                     made = intake_ticket(session, ctx, inb)
             except Exception as exc:
                 failed += 1
-                failed_acks.append(inb.ack)
+                failed_items.append(inb)
                 log.warning("could not store one inbound message from %s: %s", inb.channel, type(exc).__name__)
+                continue
+            if made is not None and intake.STUB_FLAG in (made.flags or []):
+                stubs += 1
+                if inb.stub:
+                    stubbed.append(inb)
                 continue
             stored += 1 if made else 0
             if inb.ack:
                 acks.append(inb.ack)
-        if cursor is not None:
-            cursor, gave_up = _hold_back(cursor, before, failed_acks)
+        events = list(batch.notes)
+        give_up: list[InboundTicket] = []
+        if cursor_key:
+            cursor, gave_up = _hold_back(batch.cursor, before, [i.ack for i in failed_items], hold)
             _set_state(session, cursor_key, json.dumps(cursor))
-            errors += [gave_up] if gave_up else []
-        errors += notes
-        if skipped:  # not lost: they are still in the mailbox, but the desk cannot read them, so a person has to
-            shown = ", ".join(str(u) for u in skipped[:10]) + (" and more" if len(skipped) > 10 else "")
-            errors.append(f"{len(skipped)} message(s) in the inbox could not be read by the desk (too large or damaged, uid {shown}). Open them in the mailbox.")
+            loose = [i for i in failed_items if not str(i.ack).isdigit()]  # nothing to hold the cursor at: it is given up on at once
+            give_up = failed_items if gave_up else loose
+            events += [gave_up] if gave_up else ([f"{len(loose)} message(s) from {name} could not be stored and were skipped. Each is now a ticket that needs a person."] if loose else [])
+        else:
+            give_up = intake.failures_to_give_up(session, name, failed_items)
+            if give_up:
+                events.append(f"{len(give_up)} message(s) from {name} could not be stored after {MAX_STORE_TRIES} tries and were skipped. They are still in the helpdesk, and each is now a ticket that needs a person.")
+        stubs += _stub_failed(session, ctx, give_up)
+        if stubbed or batch.skipped:  # not lost: still in the mailbox, and each is a ticket that needs a person
+            refs = [i.ack for i in stubbed] + [str(u) for u in batch.skipped]
+            shown = ", ".join(refs[:10]) + (" and more" if len(refs) > 10 else "")
+            events.append(f"{len(refs)} {hold['what']} could not be read by the desk (too large or damaged, {hold['ref']} {shown}). Each is a ticket that needs a person; open the original in {hold['where']}.")
+        errors += events
+        intake.record_run(session, now, name, [], events)
         mark = getattr(source, "mark_seen", None)
         if acks and mark:
             session.info.setdefault("after_commit", []).append(lambda m=mark, a=tuple(acks): m(list(a)))
-    return {"fetched": stored, "failed": failed, "errors": errors}
+    return {"fetched": stored, "failed": failed, "stubs": stubs, "errors": errors}
 
 
 def fetch_from_helpdesk(session: Session, ctx) -> int:
@@ -356,11 +415,19 @@ def notify_escalations(session: Session, ctx) -> dict:
     return {"notified": sent}
 
 
-def intake_warnings(session: Session) -> list[str]:
-    """Plain sentences for the settings page about what the mailbox run has noticed. Empty when all is well."""
+def intake_warnings(session: Session, now=None) -> list[str]:
+    """Plain sentences for the settings page and the Overview about what intake has noticed: a source that answered with something unreadable, mail that was too large or damaged, a gap in
+    a helpdesk list, messages from erased addresses waiting for a person, a mailbox that cannot be marked read. Empty when all is well."""
+    from sendora_core.db import utcnow
+
+    out: list[str] = []
     if int(_get_state(session, MARK_FAILS_KEY, "0") or 0) >= MARK_FAILS_ALERT:
-        return ["The inbox could not be marked read in the last runs. If the mail account is read only, that is fine: new mail is found by its number and nothing is missed, but mail the desk has taken in stays unread in the mailbox."]
-    return []
+        out.append("The inbox could not be marked read in the last runs. If the mail account is read only, that is fine: new mail is found by its number and nothing is missed, but mail the desk has taken in stays unread in the mailbox.")
+    out += intake.active_notes(session, now or utcnow())
+    waiting = intake.erased_waiting(session)
+    if waiting:
+        out.append(f"{waiting} message(s) came from an address that was erased on request. Nothing they said was kept; each is a ticket that needs a person. To accept this person's messages again, lift the erasure (docs/11).")
+    return out
 
 
 def demo_arrival(session: Session, ctx) -> str | None:
@@ -389,8 +456,14 @@ def demo_arrival(session: Session, ctx) -> str | None:
     return a["subject"]
 
 
+class NothingToDraft(Exception):
+    """A stub ticket holds none of the message's words, so there is nothing to draft from. A person reads the original where it arrived."""
+
+
 def ensure_redraftable(t: Ticket) -> None:
     """Drafting again throws the live answer away. While a send is unconfirmed that answer is the only record of what may have left, so it stays until a person says whether the customer got it."""
+    if intake.STUB_FLAG in (t.flags or []):
+        raise NothingToDraft("The desk holds none of this message's words, so there is nothing to draft from. Open the original where it arrived and answer it there.")
     if any(a.status == "sending" for a in t.answers):
         raise ReplyInDoubt(IN_DOUBT)
 

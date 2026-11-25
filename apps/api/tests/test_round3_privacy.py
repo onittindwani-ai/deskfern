@@ -71,7 +71,9 @@ def test_only_a_salted_hash_of_the_address_is_kept_and_the_person_does_not_come_
     with ctx.factory() as s:
         assert s.scalar(select(Customer).where(Customer.email == EMAIL)) is None
         again = desk.intake_ticket(s, ctx, InboundTicket("em-<back@example.test>", "email", EMAIL.upper(), "Hello again", "How do I export?", "N", verified=True))
-        assert again is None and s.scalar(select(Ticket).where(Ticket.external_id == "em-<back@example.test>")) is None
+        # round 4: not dropped silently any more, but kept as a minimal ticket for a person: no address, no subject, no words (see test_round4_intake.py)
+        assert again is not None and again.flags == ["intake_stub", "erased_sender"] and again.requester_email == "" and again.subject == "(message from an erased address)" and again.customer_id is None
+        assert "How do I export?" not in " ".join(m.body for m in again.messages)
 
 
 def test_erasing_an_address_with_no_customer_record_still_works_and_a_second_erase_is_harmless(live):

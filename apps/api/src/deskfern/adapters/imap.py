@@ -7,6 +7,10 @@ What is new is decided by the message's UID, not by the unread flag. A person wh
 that refuses to mark mail read (read only credentials) cannot make the same 50 messages come back and starve the new ones. `fetch_since` takes the last UID the desk stored (and the mailbox's
 UIDVALIDITY, which changes when a mailbox is renumbered) and reads what came after it. The very first run reads the mail that is unread right now and nothing older.
 `mark_seen` is still called after the messages are stored, so a person can see in the mailbox what the desk has taken in.
+
+A message over MAX_MESSAGE_BYTES is not downloaded whole. Its structure (BODYSTRUCTURE) is read, and only its plain or HTML text part is fetched, so a mail that is large because of a
+screenshot or a PDF still becomes a normal ticket. A message whose text cannot be read that way, or cannot be read at all, becomes a stub ticket that needs a person (intake.py), so no mail
+disappears without a trace.
 """
 
 from __future__ import annotations
@@ -14,6 +18,7 @@ from __future__ import annotations
 import email
 import imaplib
 import ipaddress
+import itertools
 import logging
 import re
 import smtplib
@@ -34,6 +39,8 @@ MAX_PER_RUN = 50  # messages taken in one run; the rest are read in the next run
 MAX_EXAMINED_PER_RUN = 300  # messages looked at in one run (their size is asked for first), so a long run of oversize mail cannot hold up the small ones for ever
 MAX_MESSAGE_BYTES = 2_000_000  # a message larger than this is not downloaded (its size is asked for first); it stays unread in the inbox for a person
 _SIZE = re.compile(rb"RFC822\.SIZE\s+(\d+)", re.I)
+_TOKEN = re.compile(rb'\s*(?:(\()|(\))|"((?:[^"\\]|\\.)*)"|(NIL\b)|(\d+)|([^\s()"]+))', re.I)
+MAX_HEADER_BYTES = 65_536  # the header block of a large message is asked for with this ceiling
 
 
 def is_loopback(host: str) -> bool:
@@ -75,6 +82,12 @@ def _content(part) -> str:
         return raw.decode("utf-8", errors="replace")
 
 
+def _plain_from_html(html: str) -> str:
+    from deskfern.crawler import parse_html
+
+    return parse_html(html)[1]
+
+
 def _text_of(msg) -> str:
     """The words of a message: its plain text part, or, for a mail that only has an HTML part, that part with the tags taken out (scripts and styles dropped)."""
     plain = msg.get_body(preferencelist=("plain",))
@@ -82,10 +95,16 @@ def _text_of(msg) -> str:
     if not text.strip():
         html = msg.get_body(preferencelist=("html",))
         if html is not None:
-            from deskfern.crawler import parse_html
-
-            text = parse_html(_content(html))[1]
+            text = _plain_from_html(_content(html))
     return text[:MAX_BODY]
+
+
+def _whole(v) -> int:
+    """A saved cursor number, or 0 when what was saved is not a number (a damaged row): the mailbox is then read as on a first run instead of failing every run."""
+    try:
+        return max(int(v or 0), 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _uidvalidity(c) -> str:
@@ -110,6 +129,70 @@ def _size_of(c, uid: str) -> int | None:
         if m:
             return int(m.group(1))
     return None
+
+
+def _parse_list(raw: bytes, after: bytes = b"") -> list:
+    """The first parenthesised list in an IMAP answer (after the word `after`, when given) as nested Python lists (strings, numbers, None for NIL). Raises ValueError for anything unbalanced."""
+    cut = raw.upper().find(after.upper()) if after else 0
+    start = raw.find(b"(", max(cut, 0))
+    if cut < 0 or start < 0:
+        raise ValueError("no list")
+    stack: list[list] = []
+    pos = start
+    while pos < len(raw):
+        m = _TOKEN.match(raw, pos)
+        if m is None:
+            break
+        pos = m.end()
+        if m.group(1):
+            stack.append([])
+        elif m.group(2):
+            done = stack.pop()
+            if not stack:
+                return done
+            stack[-1].append(done)
+        elif stack:
+            if m.group(3) is not None:
+                stack[-1].append(m.group(3).decode("utf-8", "replace"))
+            elif m.group(4):
+                stack[-1].append(None)
+            elif m.group(5):
+                stack[-1].append(int(m.group(5)))
+            else:
+                stack[-1].append(m.group(6).decode("utf-8", "replace"))
+    raise ValueError("unbalanced list")
+
+
+def text_parts(structure) -> dict[str, tuple[str, int | None]]:
+    """Where the readable text of a multipart message is: {"plain": (section, size), "html": (section, size)}, the first of each that is not an attachment.
+    A message that is a single part has none (its whole body is the text, and that is what made it too large)."""
+    found: dict[str, tuple[str, int | None]] = {}
+
+    def walk(node, section: str) -> None:
+        if not isinstance(node, list) or not node:
+            return
+        if isinstance(node[0], list):  # multipart: its parts, then its subtype
+            for n, child in enumerate(itertools.takewhile(lambda c: isinstance(c, list), node), start=1):  # the parts come first; the subtype and the extension data after them are not parts
+                walk(child, f"{section}.{n}" if section else str(n))
+            return
+        if len(node) < 7 or not section:
+            return
+        kind, sub = str(node[0]).lower(), str(node[1]).lower()
+        disposition = node[9] if len(node) > 9 else None
+        if kind != "text" or sub not in ("plain", "html") or (isinstance(disposition, list) and disposition and str(disposition[0]).lower() == "attachment"):
+            return
+        found.setdefault(sub, (section, node[6] if isinstance(node[6], int) else None))
+
+    walk(structure, "")
+    return found
+
+
+def _literal(parts) -> bytes:
+    """The bytes of the first literal in a FETCH answer. An answer with no literal (an empty part) is empty."""
+    for p in parts or []:
+        if isinstance(p, tuple) and len(p) >= 2:
+            return p[1] or b""
+    return b""
 
 
 class _Base:
@@ -164,19 +247,75 @@ def _imap_failure(exc: Exception, host: str) -> AdapterError:
 class ImapInbox(_Base):
     cursor_key = "imap_cursor"  # the State row the desk saves this mailbox's cursor in
 
-    def _read_one(self, c, uid: str) -> InboundTicket | None:
-        """One message as a ticket, or None when it is too large or empty. Raises for a message that cannot be read."""
+    validity = ""  # the mailbox's UIDVALIDITY of the run in progress, part of the id of a message that has no Message-ID
+
+    def _ticket_of(self, msg, text: str, uid: str) -> InboundTicket:
+        sender = parseaddr(str(msg["From"] or ""))
+        return InboundTicket(f"em-{clean_header(str(msg['Message-ID'] or uid))}", "email", sender[1].lower(), clean_header(str(msg["Subject"] or "(no subject)")), text, sender[0],
+                             verified=sender_is_authenticated(msg, self.settings.inbound_authserv_id), ack=uid)
+
+    def _read_one(self, c, uid: str, salvage: bool = True) -> InboundTicket | None:
+        """One message as a ticket. A message over the size limit is not downloaded: its text part alone is read (`salvage`), or, when that is not possible, a stub is returned
+        (`InboundTicket.stub` is set) so a person is told. Without `salvage` it is None. Raises for a message that cannot be read."""
         size = _size_of(c, uid)
         if size is not None and size > MAX_MESSAGE_BYTES:
-            log.warning("left one message in the mailbox because it is larger than %d bytes (uid %s)", MAX_MESSAGE_BYTES, uid)
-            return None
+            log.warning("did not download one message because it is larger than %d bytes (uid %s)", MAX_MESSAGE_BYTES, uid)
+            return self._salvage(c, uid) if salvage else None
         _, parts = c.uid("FETCH", uid, "(BODY.PEEK[])")  # PEEK: reading does not mark the mail as read
         if not parts or not parts[0] or len(parts[0][1]) > MAX_MESSAGE_BYTES:
             return None
         msg = email.message_from_bytes(parts[0][1], policy=default_policy)
-        sender = parseaddr(str(msg["From"] or ""))
-        return InboundTicket(f"em-{clean_header(str(msg['Message-ID'] or uid))}", "email", sender[1].lower(), clean_header(str(msg["Subject"] or "(no subject)")), _text_of(msg), sender[0],
-                             verified=sender_is_authenticated(msg, self.settings.inbound_authserv_id), ack=uid)
+        return self._ticket_of(msg, _text_of(msg), uid)
+
+    def _headers(self, c, uid: str):
+        """The header lines of a message (a window of MAX_HEADER_BYTES), or None when they cannot be read."""
+        try:
+            _, parts = c.uid("FETCH", uid, f"(BODY.PEEK[HEADER]<0.{MAX_HEADER_BYTES}>)")
+            raw = _literal(parts)
+            return email.message_from_bytes(raw, policy=default_policy) if raw else None
+        except Exception as exc:  # a stub is better than nothing, and the header is only a nicety for it
+            log.warning("could not read the header of a message (uid %s): %s", uid, type(exc).__name__)
+            return None
+
+    def _salvage(self, c, uid: str) -> InboundTicket:
+        """A message that is too large to download whole: the ticket from its text part alone, or a stub for a person."""
+        msg = self._headers(c, uid)
+        try:
+            _, parts = c.uid("FETCH", uid, "(BODYSTRUCTURE)")
+            wanted = text_parts(_parse_list(b" ".join(p if isinstance(p, bytes) else b"" for p in parts or []), after=b"BODYSTRUCTURE"))
+            if msg is not None and wanted:
+                return self._ticket_of(msg, self._text_from_sections(c, uid, wanted), uid)
+        except Exception as exc:
+            log.warning("could not read the text part of a large message (uid %s): %s", uid, type(exc).__name__)
+        return self.stub(c, uid, "too_large", msg)
+
+    def _text_from_sections(self, c, uid: str, wanted: dict) -> str:
+        """The words of a large message from its plain part (or its HTML part with the tags taken out). Each part is fetched alone and only when it is within the size limit."""
+        text = ""
+        for kind in ("plain", "html"):
+            section, size = wanted.get(kind, ("", None))
+            if not section or size is None or size > MAX_MESSAGE_BYTES:
+                continue
+            _, head = c.uid("FETCH", uid, f"(BODY.PEEK[{section}.MIME])")
+            _, body = c.uid("FETCH", uid, f"(BODY.PEEK[{section}])")
+            raw_body = _literal(body)
+            if len(raw_body) > MAX_MESSAGE_BYTES:
+                continue
+            part = email.message_from_bytes(_literal(head) + raw_body, policy=default_policy)
+            text = _content(part) if kind == "plain" else _plain_from_html(_content(part))
+            if text.strip():
+                break
+        if not text.strip():
+            raise ValueError("no readable text part")
+        return text[:MAX_BODY]
+
+    def stub(self, c, uid: str, kind: str, msg=None) -> InboundTicket:
+        """A message the desk could not read, as a ticket for a person (see intake.py). The sender and subject are used when the header could be read."""
+        msg = msg if msg is not None else self._headers(c, uid)
+        sender = parseaddr(str(msg["From"] or "")) if msg is not None else ("", "")
+        mid = clean_header(str(msg["Message-ID"] or "")) if msg is not None else ""
+        subject = clean_header(str(msg["Subject"] or "")) if msg is not None else ""
+        return InboundTicket(f"em-{mid}" if mid else f"em-uid-{self.validity or 'x'}-{uid}", "email", sender[1].lower(), subject, "", sender[0], ack=uid, stub=kind)
 
     def _connect(self):
         self._need("imap_host", "smtp_user")
@@ -202,7 +341,7 @@ class ImapInbox(_Base):
                     if len(out) >= MAX_PER_RUN:
                         break  # the rest wait for the next run
                     try:
-                        t = self._read_one(c, uid.decode())
+                        t = self._read_one(c, uid.decode(), salvage=False)
                     except Exception as exc:  # one unreadable message must not hide the rest
                         log.warning("skipped one unreadable message (uid %s): %s", uid.decode(errors="replace"), type(exc).__name__)
                         continue
@@ -221,17 +360,17 @@ class ImapInbox(_Base):
 
         First run (or the mailbox was renumbered, its UIDVALIDITY changed): the mail that is unread right now is read, up to the highest UID the mailbox has at that moment,
         and nothing older. After that every message with a higher UID than the last one looked at is read, read or unread, so mail a person opened first is not lost. A message that
-        cannot be read, or is too large, is listed in `skipped` and the cursor moves past it, so it can never block the mail behind it."""
+        cannot be read, or is too large (and has no readable text part), comes back as a stub ticket (see `stub`) and the cursor moves past it, so it can never block the mail behind it."""
         out = Batch()
         try:
             c = self._connect()
             try:
-                validity = _uidvalidity(c)
+                validity = self.validity = _uidvalidity(c)
                 if str(cursor.get("validity", "")) != validity:
                     if cursor.get("validity"):
                         log.warning("the mailbox was renumbered (UIDVALIDITY changed); reading its unread mail again. Mail already stored is recognised and not made into a second ticket.")
                     cursor = {"validity": validity, "last_uid": 0, "boot_until": _highest_uid(c)}
-                last, until = int(cursor.get("last_uid", 0)), int(cursor.get("boot_until", 0))
+                last, until = _whole(cursor.get("last_uid")), _whole(cursor.get("boot_until"))
                 criteria = f"UNSEEN UID {last + 1}:{until}" if last < until else f"UID {last + 1}:*"
                 _, data = c.uid("SEARCH", None, criteria)
                 uids = sorted(u for u in (int(x) for x in (data[0] or b"").split()) if u > last)  # "n:*" always includes the newest message, even when it is older than n
@@ -244,12 +383,9 @@ class ImapInbox(_Base):
                     try:
                         t = self._read_one(c, str(uid))
                     except Exception as exc:
-                        log.warning("skipped one unreadable message (uid %s): %s", uid, type(exc).__name__)
+                        log.warning("could not read one message (uid %s): %s", uid, type(exc).__name__)
                         t = None
-                    if t is None:
-                        out.skipped.append(uid)
-                    else:
-                        out.tickets.append(t)
+                    out.tickets.append(t or self.stub(c, str(uid), "unreadable"))  # never dropped: a message the desk cannot read becomes a ticket that needs a person
                 else:
                     if last < until:
                         last = until  # nothing unread is left in the range that was already in the mailbox on the first run

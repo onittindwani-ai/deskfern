@@ -1,7 +1,7 @@
 {
  "tables": 18,
- "api_paths": 50,
- "api_operations": 52,
+ "api_paths": 51,
+ "api_operations": 53,
  "pages": 10,
  "screenshots": 35,
  "tool_groups": 6,
@@ -75,9 +75,9 @@
   "files": 5
  },
  "tests": {
-  "passed": 429,
+  "passed": 483,
   "skipped": 2,
   "failed": 0,
-  "coverage_percent": 93.9
+  "coverage_percent": 94.2
  }
 }

@@ -192,12 +192,12 @@ Where to put them: **local** in a `.env` file at the repo root (copied from `.en
 ## RETENTION_DAYS
 
 - Required: optional
-- What it does: How long the desk keeps what customers wrote. Once a day, a finished ticket (replied, refused, duplicate or closed) older than this many days loses its messages, its drafted and sent answers and its hand over notes, and so do the test cases made from agent edits that old. A ticket that a refund record points at stays as an empty shell, because the payment record has to keep its place. The default is 730 days (two years). 0 keeps everything for ever. Open tickets are never touched.
+- What it does: How long the desk keeps what customers wrote. Once a day, a finished ticket (replied, refused, duplicate or closed) older than this many days loses its messages, its drafted and sent answers and its hand over notes, and so do the test cases made from agent edits that old. A ticket that a refund record points at stays as an empty shell that keeps its link to the customer, because the payment record has to keep its place and the one refund per 12 months rule still has to see it. The default is 730 days (two years). 0 keeps everything for ever. Open tickets are never touched.
 - How to get it: Choose the period your privacy policy promises. Not needed to start.
 - Cost: Free.
 - Local, Vercel, Railway, Hetzner: set it in the API and worker environment (see the paragraph at the top). The web host does not need it.
 - Check it: `python3 tools/doctor.py`. The audit log shows a line `retention.purged` whenever the job removed something.
-- If it is wrong: Too short and old tickets vanish sooner than you want, too long (or 0) and customer words stay. Backups made before a purge still hold the words until they are rotated out (see `11-OPERATING-AND-BACKUPS.md`).
+- If it is wrong: Too short and old tickets vanish sooner than you want, too long (or 0) and customer words stay. Under 365 the settings page says so ("under 365"): ticket words then go before the 12 month look back of the refund rule has run its course. The refund records and the link to the customer are kept, so the rule still counts every refund, but someone reading an old refund ticket finds it empty. Backups made before a purge still hold the words until they are rotated out (see `11-OPERATING-AND-BACKUPS.md`).
 
 ## ESCALATION_NOTIFY_EMAIL
 

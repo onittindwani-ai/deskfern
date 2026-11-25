@@ -106,7 +106,7 @@ def test_integration(category: str, ctx: Ctx = Depends(get_ctx), u: dict = Depen
 def get_settings(request: Request, s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_ctx)):
     eff = ctx.effective(s)
     st = ctx.settings
-    return {"mode": st.mode.value, "effective_mode": eff.mode.value, "kill_switch": eff.kill_switch, "demo_mode": st.demo_mode, "problems": st.problems() + request.app.state.login_guard.warnings() + desk.intake_warnings(s), "company": st.company_name,
+    return {"mode": st.mode.value, "effective_mode": eff.mode.value, "kill_switch": eff.kill_switch, "demo_mode": st.demo_mode, "problems": st.problems() + request.app.state.login_guard.warnings() + desk.intake_warnings(s, ctx.now(s)), "company": st.company_name,
             "writer": "offline rules (not a language model)" if ctx.writer is None else "custom writer", "search": "SQLite full text plus a hashed word vector (not a language model embedding)",
             "sla_hours": {"urgent": st.sla_urgent_h, "high": st.sla_high_h, "normal": st.sla_normal_h, "low": st.sla_low_h},
             "sla_clock": st.sla_clock, "business_hours": f"{st.business_hours_start:02d}:00 to {st.business_hours_end:02d}:00 {st.office_timezone}"}

@@ -9,6 +9,17 @@ from sendora_core.adapters import AdapterError
 from sendora_core.safety import write_action
 
 
+def _error_message(r: httpx.Response) -> str:
+    """Stripe's own error text, or empty when the answer is not the JSON it should be."""
+    if not r.headers.get("content-type", "").startswith("application/json"):
+        return ""
+    try:
+        err = r.json().get("error")
+        return str(err.get("message", "")) if isinstance(err, dict) else ""
+    except (ValueError, AttributeError):
+        return ""
+
+
 class StripePayments:
     def __init__(self, settings, client: httpx.Client | None = None):
         self.settings = settings
@@ -26,9 +37,11 @@ class StripePayments:
         if r.status_code == 401:
             raise AdapterError("Stripe refused the key. Use a restricted key that can write refunds only.")
         if r.status_code >= 400:
-            msg = (r.json().get("error") or {}).get("message", "") if r.headers.get("content-type", "").startswith("application/json") else ""
-            raise AdapterError(f"Stripe answered {r.status_code}: {msg[:120]}")
-        return str(r.json()["id"])
+            raise AdapterError(f"Stripe answered {r.status_code}: {_error_message(r)[:120]}")
+        try:
+            return str(r.json()["id"])
+        except (ValueError, KeyError, TypeError):  # accepted, but no refund id came back (a proxy page, a changed answer): never a crash, and the same idempotency key makes the next try safe
+            raise AdapterError("Stripe accepted the request but did not return a refund id the desk can read. The refund stays waiting and is tried again with the same key, which cannot pay twice.") from None
 
     def healthcheck(self):
         return (True, "Key present. Refund calls are only tested against a mock (UNVERIFIED live).") if self.settings.stripe_secret_key else (False, "No key.")

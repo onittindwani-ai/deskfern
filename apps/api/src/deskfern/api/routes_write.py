@@ -66,7 +66,7 @@ def redraft(tid: int, s: Session = Depends(db, scope="function"), ctx: Ctx = Dep
     t = _ticket(s, tid)
     try:
         desk.ensure_redraftable(t)  # a send nobody has confirmed must be settled first (It was delivered, It was not delivered), or the customer could get two replies
-    except desk.ReplyInDoubt as exc:
+    except (desk.ReplyInDoubt, desk.NothingToDraft) as exc:
         raise HTTPException(409, str(exc)) from exc
     for a in t.answers:
         a.status = "discarded"
@@ -262,5 +262,13 @@ class EraseIn(BaseModel):
 def erase_customer(b: EraseIn, s: Session = Depends(db, scope="function"), u: dict = Depends(owner)):
     try:
         return privacy.erase_customer(s, b.email, u["user"])
+    except privacy.EraseBlocked as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/customers/lift-erasure", summary="Accept messages and imports from an erased address again (owner only). Audited. Nothing that was erased comes back.")
+def lift_erasure(b: EraseIn, s: Session = Depends(db, scope="function"), u: dict = Depends(owner)):
+    try:
+        return privacy.lift_erasure(s, b.email, u["user"])
     except privacy.EraseBlocked as exc:
         raise HTTPException(409, str(exc)) from exc

@@ -1,6 +1,6 @@
 export interface Me { user: string; role: "owner" | "approver" | "viewer"; demo_mode: boolean }
 export interface Settings { mode: string; effective_mode: string; kill_switch: boolean; demo_mode: boolean; problems: string[]; company: string; writer: string; search: string; sla_hours: Record<string, number>; sla_clock: string; business_hours: string }
-export interface Overview { tickets: number; open: number; breached: number; outcomes: Record<string, number>; deflection_pct: number; escalated: number; pending_approvals: number; open_gaps: number }
+export interface Overview { tickets: number; open: number; breached: number; outcomes: Record<string, number>; deflection_pct: number; escalated: number; pending_approvals: number; open_gaps: number; intake_notes: string[] }
 export interface TicketRow {
   id: number; external_id: string; subject: string; customer: string; plan: string; status: string; outcome: string; category: string; urgency: string; sentiment: string; language: string; flags: string[];
   created_at: string; due_at: string | null; minutes_left: number | null; breached: boolean; confidence: number | null; channel: string;

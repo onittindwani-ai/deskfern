@@ -30,7 +30,7 @@ Open http://localhost:3000. On plain http, Safari (and any browser that does not
 
 ## Tests
 
-- Python: `.venv/bin/python -m pytest`. The last full run is in `data/counts.json`: <!--n:tests.passed-->429<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped (it needs a Postgres, set `TEST_POSTGRES_URL`), coverage <!--n:tests.coverage_percent-->93.9<!--/n--> percent of the `deskfern` package.
+- Python: `.venv/bin/python -m pytest`. The last full run is in `data/counts.json`: <!--n:tests.passed-->483<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped (it needs a Postgres, set `TEST_POSTGRES_URL`), coverage <!--n:tests.coverage_percent-->94.2<!--/n--> percent of the `deskfern` package.
 - Seed check: `.venv/bin/python tools/score_seed.py` prints one line per planted problem.
 - Answer eval: `.venv/bin/python tools/eval_heldout.py` and `tools/eval_grounding.py` (see `ANSWER-EVAL.md`).
 - Browser tests: `pnpm e2e` (needs Google Chrome; it starts its own API and web server and a throwaway database). It tests the last build, so run `pnpm build` first. <!--n:e2e.tests-->38<!--/n--> tests.

@@ -13,6 +13,8 @@
 | A reply cannot be sent, or says it was held | Draft mode or kill switch | Check `MODE` and the Pause all state; send the reply again once both are off, the ticket stayed open |
 | A ticket asks "Was this reply delivered?" | The helpdesk or mail server did not confirm in time | Check the helpdesk or the mailbox, then press It was delivered or It was not delivered |
 | A refund says approved, not paid yet | It was approved while draft mode or Pause all was on | Turn both off; the worker pays it within a minute, or press Pay approved refunds now on Approvals |
+| A ticket named "Too large for the desk to read", "Could not be read by the desk" or "(message from an erased address)" | The desk could not take that message in as a normal ticket (too large with no readable text part, damaged, never stored, or from an address erased on request) | Open the original in the mailbox or helpdesk and answer it there; the note on the ticket says why. To accept an erased address again: `python -m deskfern.admin lift-erasure person@example.com` |
+| The Queue shows a Needs attention box | Intake noticed something (a helpdesk answered with something that is not data, a gap in a list, skipped mail) | Read each line; a source's line clears by itself when it works again, the others after 7 days |
 | A crawl stays queued | The worker is not running | Start `python -m deskfern.worker` (`05`) |
 | A refund stays waiting | Same person asked and tried to approve | Sign in as the approver |
 | Chatwoot webhook returns 401 | Wrong secret, or clock more than 5 minutes off | Check the secret and the server clock |

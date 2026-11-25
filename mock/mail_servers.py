@@ -1,12 +1,14 @@
 """A tiny fake SMTP and IMAP server for tests and the demo. Not a real mail server.
 
 SMTP: EHLO, AUTH PLAIN, MAIL, RCPT, DATA, RSET, NOOP, QUIT. Accepted messages land in `MailStore.outbox`.
-IMAP: CAPABILITY, LOGIN, SELECT (says its UIDVALIDITY), UID SEARCH (ALL, UNSEEN, UID a:b or a:*), UID FETCH (RFC822, RFC822.SIZE), UID STORE (flags), NOOP, LOGOUT.
+IMAP: CAPABILITY, LOGIN, SELECT (says its UIDVALIDITY), UID SEARCH (ALL, UNSEEN, UID a:b or a:*), UID FETCH (RFC822, RFC822.SIZE, BODYSTRUCTURE, and BODY.PEEK of the whole message,
+HEADER, a numbered part, or n.MIME, with an optional <start.length> window), UID STORE (flags), NOOP, LOGOUT.
 Messages in `MailStore.inbox` are what the IMAP client sees. It speaks only what Python's smtplib and imaplib send.
 """
 
 from __future__ import annotations
 
+import email
 import re
 import socketserver
 import threading
@@ -26,6 +28,59 @@ class MailStore:
             uid = len(self.inbox) + 1
             self.inbox.append({"uid": uid, "raw": raw, "seen": False})
             return uid
+
+
+def _quote(v: str) -> str:
+    return '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def _structure(part) -> str:
+    """The BODYSTRUCTURE of a message as an IMAP server writes it: nested lists, a multipart ends with its subtype, a text part carries size, line count and disposition."""
+    if part.is_multipart():
+        return "(" + "".join(_structure(p) for p in part.get_payload()) + f" {_quote(part.get_content_subtype().upper())})"
+    payload = part.get_payload()
+    size = len(payload.encode("utf-8", "surrogateescape")) if isinstance(payload, str) else 0
+    charset = part.get_content_charset()
+    params = f"({_quote('CHARSET')} {_quote(charset)})" if charset else "NIL"
+    enc = _quote(str(part.get("Content-Transfer-Encoding", "7bit")).upper())
+    disp = part.get_content_disposition()
+    name = part.get_filename()
+    dsp = f"({_quote(disp.upper())} ({_quote('FILENAME')} {_quote(name)}))" if disp and name else (f"({_quote(disp.upper())} NIL)" if disp else "NIL")
+    head = f"({_quote(part.get_content_maintype().upper())} {_quote(part.get_content_subtype().upper())} {params} NIL NIL {enc} {size}"
+    if part.get_content_maintype() == "text":
+        return head + f" {payload.count(chr(10)) + 1} NIL {dsp} NIL NIL)"
+    return head + f" NIL {dsp} NIL NIL)"
+
+
+def _numbered(msg, prefix: str = "") -> dict:
+    """{"1": part, "1.1": part, ...}: the parts of a message by their IMAP section number."""
+    if not msg.is_multipart():
+        return {prefix or "1": msg}
+    out: dict = {}
+    for i, child in enumerate(msg.get_payload(), start=1):
+        out.update(_numbered(child, f"{prefix}.{i}" if prefix else str(i)))
+    return out
+
+
+def _header_bytes(part) -> bytes:
+    return b"".join(f"{k}: {v}\r\n".encode("utf-8", "surrogateescape") for k, v in part.items()) + b"\r\n"
+
+
+def section_bytes(raw: bytes, spec: str) -> bytes | None:
+    """What `BODY[spec]` holds: HEADER, a part number (its body), or `n.MIME` (its own header lines). None when there is no such part."""
+    msg = email.message_from_bytes(raw)
+    spec = spec.upper()
+    if spec.startswith("HEADER"):
+        return re.split(rb"\r?\n\r?\n", raw, maxsplit=1)[0] + b"\r\n\r\n"
+    parts = _numbered(msg)
+    mime = spec.endswith(".MIME")
+    part = parts.get(spec[:-5] if mime else spec)
+    if part is None or (not mime and part.is_multipart()):
+        return None
+    if mime:
+        return _header_bytes(part)
+    payload = part.get_payload()
+    return payload.encode("utf-8", "surrogateescape") if isinstance(payload, str) else b""
 
 
 class _SMTP(socketserver.StreamRequestHandler):
@@ -125,6 +180,17 @@ class _IMAP(socketserver.StreamRequestHandler):
                         self._w(tag.encode() + b" OK done\r\n")
                     elif "RFC822.SIZE" in a2.upper():
                         self._w(f"* {uid} FETCH (UID {uid} RFC822.SIZE {len(msg['raw'])})\r\n{tag} OK done\r\n".encode())
+                    elif "BODYSTRUCTURE" in a2.upper():
+                        self._w(f"* {uid} FETCH (UID {uid} BODYSTRUCTURE {_structure(email.message_from_bytes(msg['raw']))})\r\n{tag} OK done\r\n".encode())
+                    elif (sec := re.search(r"BODY\.PEEK\[([^\]]+)\](?:<(\d+)\.(\d+)>)?", a2, re.I)):
+                        data = section_bytes(msg["raw"], sec.group(1))
+                        if data is None:
+                            self._w(f"* {uid} FETCH (UID {uid} BODY[{sec.group(1)}] NIL)\r\n{tag} OK done\r\n".encode())
+                        else:
+                            start = int(sec.group(2) or 0)
+                            window = f"<{start}>" if sec.group(2) else ""
+                            data = data[start:start + int(sec.group(3))] if sec.group(3) else data
+                            self._w(f"* {uid} FETCH (UID {uid} BODY[{sec.group(1)}]{window} {{{len(data)}}}\r\n".encode() + data + b")\r\n" + tag.encode() + b" OK done\r\n")
                     else:
                         body = msg["raw"]
                         self._w(f"* {uid} FETCH (UID {uid} RFC822 {{{len(body)}}}\r\n".encode() + body + b")\r\n" + tag.encode() + b" OK done\r\n")

@@ -13,7 +13,7 @@ from urllib.parse import quote, urlparse
 
 import httpx
 
-from deskfern.adapters.base import Batch, DeliveryUnknown, InboundTicket, checked_ref, deliver, safe_base_url
+from deskfern.adapters.base import Batch, DeliveryUnknown, InboundTicket, checked_ref, deliver, json_body, safe_base_url
 from sendora_core.adapters import AdapterError
 from sendora_core.safety import write_action
 
@@ -86,7 +86,10 @@ class ChatwootHelpdesk:
         conv = m.group(2)
         r = deliver(lambda: self.client.post(f"/api/v1/accounts/{quote(str(self.settings.chatwoot_account_id), safe='')}/conversations/{conv}/messages", headers={"Authorization": f"Bearer {self.settings.chatwoot_api_token}", "api_access_token": self.settings.chatwoot_api_token}, json={"content": body, "message_type": "outgoing", "private": private}), "Chatwoot")
         _check(r, "Chatwoot", write=True)
-        return str(r.json().get("id", ""))
+        try:
+            return str(json_body(r, "Chatwoot").get("id", ""))
+        except (AdapterError, AttributeError):
+            return ""  # the reply was accepted; only the id Chatwoot gave back is unreadable, and nothing depends on it
 
     def healthcheck(self):
         return True, "Settings present. The send path is only tested against a mock (UNVERIFIED live)."
@@ -103,25 +106,35 @@ class IntercomHelpdesk:
         return {"Authorization": f"Bearer {self.settings.intercom_token}", "Accept": "application/json"}
 
     def fetch_new(self) -> list[InboundTicket]:
-        """Up to MAX_PAGES pages, each page naming the next one (pages.next.starting_after). Tickets already stored are skipped by the desk, so reading a page twice is harmless."""
+        return self.fetch_batch().tickets
+
+    def fetch_batch(self) -> Batch:
+        """Up to MAX_PAGES pages, each page naming the next one (pages.next.starting_after). Tickets already stored are skipped by the desk, so reading a page twice is harmless.
+        An answer that is not the expected shape is an AdapterError; one conversation that is not usable is skipped and counted in `notes`, so it cannot hide the rest."""
         out: list[InboundTicket] = []
+        unusable = 0
         params: dict[str, str] = {}
         for _ in range(MAX_PAGES):
             r = self.client.get("/conversations", headers=self._h(), params=params)
             _check(r, "Intercom")
-            data = r.json()
-            for c in data.get("conversations", []):
+            data = _object(json_body(r, "Intercom"), "Intercom")
+            rows, dropped = _rows(data.get("conversations", []), "Intercom")
+            unusable += dropped
+            for c in rows:
+                if not _usable_id(c):
+                    unusable += 1
+                    continue
                 if c.get("state") not in {None, "open"}:  # closed and snoozed conversations are finished or parked: they are not new tickets
                     continue
-                src = c.get("source") or {}
-                out.append(InboundTicket(f"ic-{c['id']}", "intercom", ((src.get("author") or {}).get("email") or "").lower(), src.get("subject") or "Conversation", _strip(src.get("body") or ""), (src.get("author") or {}).get("name", ""),
-                                         datetime.fromtimestamp(c["created_at"], UTC) if c.get("created_at") else None))
-            nxt = (data.get("pages") or {}).get("next")
+                src = _obj(c.get("source"))
+                author = _obj(src.get("author"))
+                out.append(InboundTicket(f"ic-{c['id']}", "intercom", _email(author.get("email")), _text(src.get("subject")) or "Conversation", _strip(_text(src.get("body"))), _text(author.get("name")), _ts(c.get("created_at"))))
+            nxt = _obj(data.get("pages")).get("next")
             cursor = nxt.get("starting_after") if isinstance(nxt, dict) else None
             if not cursor:
                 break
             params = {"starting_after": str(cursor)}
-        return out
+        return Batch(tickets=out, notes=_unusable_note("Intercom conversation", unusable))
 
     @write_action("helpdesk.reply")
     def post_reply(self, external_id: str, body: str, private: bool = False) -> str:
@@ -140,6 +153,7 @@ class IntercomHelpdesk:
 
 class ZendeskHelpdesk:
     cursor_key = "zendesk_cursor"  # the State row the desk saves {"max_id": the highest ticket number handled} in
+    hold = {"key": "max_id", "what": "ticket(s) from Zendesk", "ref": "ticket", "where": "Zendesk"}  # how the desk holds the cursor back below a ticket it could not store (desk.py)
 
     def __init__(self, settings, client: httpx.Client | None = None):
         self.settings = settings
@@ -158,14 +172,12 @@ class ZendeskHelpdesk:
         for _ in range(MAX_PAGES):
             r = self.client.get(url, headers=self._h())
             _check(r, "Zendesk")
-            data = r.json()
-            out += [InboundTicket(f"zd-{t['id']}", "zendesk", ((t.get("requester") or {}).get("email") or t.get("requester_email") or "").lower(), t.get("subject") or "", t.get("description") or "", "", _dt(t.get("created_at")))
-                    for t in data.get("tickets", []) if t.get("status") in {None, "new", "open"}]
+            data = _object(json_body(r, "Zendesk"), "Zendesk")
+            out += [_zendesk_ticket(t) for t in _rows(data.get("tickets", []), "Zendesk")[0] if _usable_numeric_id(t) and t.get("status") in {None, "new", "open"}]
             nxt = data.get("next_page")
             if not nxt:
                 break
-            u = urlparse(str(nxt))
-            url = u.path + (f"?{u.query}" if u.query else "")
+            url = _path_of(nxt)
         return out
 
     def fetch_since(self, cursor: dict) -> Batch:
@@ -173,15 +185,18 @@ class ZendeskHelpdesk:
 
         Asks for `sort_by=id&sort_order=desc` and reads pages until one holds a ticket already handled, or MAX_PAGES pages. The sort parameters are written from memory of
         Zendesk's public docs and were tested only against a local imitation (UNVERIFIED live). If a page does not come back newest first the run says so, because then
-        tickets beyond the pages read could be missed. If more than MAX_PAGES pages of new tickets arrived since the last run, the oldest of them are named in `notes`, not lost silently."""
-        mark = int(cursor.get("max_id", 0) or 0)
-        out, newest, reached, ordered, more = [], mark, False, True, False
+        tickets beyond the pages read could be missed. If more than MAX_PAGES pages of new tickets arrived since the last run, the oldest of them are named in `notes`, not lost silently.
+        Each ticket carries its number in `ack`, so a ticket that could not be stored holds the cursor just below it (see desk.py)."""
+        mark = _whole(cursor.get("max_id"))
+        out, newest, reached, ordered, more, unusable = [], mark, False, True, False, 0
         url = "/api/v2/tickets.json?sort_by=id&sort_order=desc"
         for _ in range(MAX_PAGES):
             r = self.client.get(url, headers=self._h())
             _check(r, "Zendesk")
-            data = r.json()
-            rows = [t for t in data.get("tickets", []) if str(t.get("id", "")).isdigit()]
+            data = _object(json_body(r, "Zendesk"), "Zendesk")
+            listed, dropped = _rows(data.get("tickets", []), "Zendesk")
+            rows = [t for t in listed if _usable_numeric_id(t)]
+            unusable += dropped + len(listed) - len(rows)
             ids = [int(t["id"]) for t in rows]
             if any(b > a for a, b in zip(ids, ids[1:])):
                 ordered = False
@@ -189,7 +204,7 @@ class ZendeskHelpdesk:
                 if int(t["id"]) > mark:
                     newest = max(newest, int(t["id"]))
                     if t.get("status") in {None, "new", "open"}:
-                        out.append(InboundTicket(f"zd-{t['id']}", "zendesk", ((t.get("requester") or {}).get("email") or t.get("requester_email") or "").lower(), t.get("subject") or "", t.get("description") or "", "", _dt(t.get("created_at"))))
+                        out.append(_zendesk_ticket(t))
             if ordered and ids and min(ids) <= mark:
                 reached = True
                 break
@@ -198,9 +213,8 @@ class ZendeskHelpdesk:
             if not nxt:
                 reached = True  # the list ended: everything there is was read
                 break
-            u = urlparse(str(nxt))
-            url = u.path + (f"?{u.query}" if u.query else "")
-        notes = []
+            url = _path_of(nxt)
+        notes = _unusable_note("Zendesk ticket", unusable)
         if not ordered:
             notes.append("Zendesk did not list tickets newest first, so tickets beyond the first pages read may be missed. Check the helpdesk for tickets the desk does not show (UNVERIFIED against a live Zendesk).")
         elif not reached and more:
@@ -233,17 +247,28 @@ class FreshdeskHelpdesk:
         return {"Authorization": "Basic " + base64.b64encode(f"{self.settings.freshdesk_api_key}:X".encode()).decode()}
 
     def fetch_new(self) -> list[InboundTicket]:
-        """Up to MAX_PAGES pages of 100 (`page`, `per_page`); a page with fewer than 100 tickets is the last."""
+        return self.fetch_batch().tickets
+
+    def fetch_batch(self) -> Batch:
+        """Up to MAX_PAGES pages of 100 (`page`, `per_page`); a page with fewer than 100 tickets is the last. A ticket that is not usable is skipped and counted in `notes`."""
         out: list[InboundTicket] = []
+        unusable = 0
         for page in range(1, MAX_PAGES + 1):
             r = self.client.get("/api/v2/tickets", headers=self._h(), params={"page": page, "per_page": 100})
             _check(r, "Freshdesk")
-            rows = r.json()
-            out += [InboundTicket(f"fd-{t['id']}", "freshdesk", (t.get("email") or "").lower(), t.get("subject") or "", t.get("description_text") or "", "", _dt(t.get("created_at")))
-                    for t in rows if t.get("status") in {None, 2, 3}]  # 2 open and 3 pending; 4 resolved and 5 closed are finished
-            if len(rows) < 100:
+            body = json_body(r, "Freshdesk")
+            if not isinstance(body, list):
+                raise AdapterError("Freshdesk answered with data the desk does not understand (a list of tickets was expected).")
+            rows, dropped = _rows(body, "Freshdesk")
+            unusable += dropped
+            for t in rows:
+                if not _usable_id(t):
+                    unusable += 1
+                elif t.get("status") in {None, 2, 3}:  # 2 open and 3 pending; 4 resolved and 5 closed are finished
+                    out.append(InboundTicket(f"fd-{t['id']}", "freshdesk", _email(t.get("email")), _text(t.get("subject")), _text(t.get("description_text")), "", _dt(t.get("created_at"))))
+            if len(body) < 100:
                 break
-        return out
+        return Batch(tickets=out, notes=_unusable_note("Freshdesk ticket", unusable))
 
     @write_action("helpdesk.reply")
     def post_reply(self, external_id: str, body: str, private: bool = False) -> str:
@@ -264,11 +289,83 @@ class FreshdeskHelpdesk:
 
 def _dt(v):
     try:
-        return datetime.fromisoformat(v.replace("Z", "+00:00")) if v else None
+        return datetime.fromisoformat(v.replace("Z", "+00:00")) if v and isinstance(v, str) else None
     except ValueError:
         return None
 
 
+def _ts(v):
+    """A unix time from a vendor, or None when it is missing or not a sensible number."""
+    if isinstance(v, bool) or not isinstance(v, int | float):
+        return None
+    try:
+        return datetime.fromtimestamp(v, UTC)
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+def _text(v) -> str:
+    """Text from a vendor: a string stays, a number is written out, anything else (a list, an object, null) is empty, so a changed shape never crashes the run."""
+    if isinstance(v, str):
+        return v
+    return str(v) if isinstance(v, int | float) and not isinstance(v, bool) else ""
+
+
+def _email(v) -> str:
+    return _text(v).strip().lower()
+
+
+def _obj(v) -> dict:
+    return v if isinstance(v, dict) else {}
+
+
+def _object(v, what: str) -> dict:
+    if not isinstance(v, dict):
+        raise AdapterError(f"{what} answered with data the desk does not understand (an object was expected).")
+    return v
+
+
+def _rows(v, what: str) -> tuple[list[dict], int]:
+    """The list in an answer, and how many of its entries were left out. Not a list is an AdapterError; an entry that is not an object cannot be a ticket."""
+    if v is None:
+        return [], 0
+    if not isinstance(v, list):
+        raise AdapterError(f"{what} answered with data the desk does not understand (a list was expected).")
+    rows = [x for x in v if isinstance(x, dict)]
+    return rows, len(v) - len(rows)
+
+
+def _whole(v) -> int:
+    """A saved cursor number, or 0 when what was saved is not a number (a damaged or hand edited row): the desk then starts from the beginning instead of failing every run."""
+    try:
+        return max(int(v or 0), 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _usable_id(row: dict) -> bool:
+    i = row.get("id")
+    return isinstance(i, str | int) and not isinstance(i, bool) and bool(str(i).strip())
+
+
+def _usable_numeric_id(row: dict) -> bool:
+    return str(row.get("id", "")).isdigit() and not isinstance(row.get("id"), bool)
+
+
+def _unusable_note(what: str, n: int) -> list[str]:
+    return [f"{n} {what}(s) in the list had no usable number and were skipped. Open the helpdesk to see them."] if n else []
+
+
+def _path_of(pointer) -> str:
+    """Only the path and query of a `next_page` address, never another host."""
+    u = urlparse(str(pointer))
+    return u.path + (f"?{u.query}" if u.query else "")
+
+
+def _zendesk_ticket(t: dict) -> InboundTicket:
+    requester = _obj(t.get("requester"))
+    return InboundTicket(f"zd-{t['id']}", "zendesk", _email(requester.get("email")) or _email(t.get("requester_email")), _text(t.get("subject")), _text(t.get("description")), "", _dt(t.get("created_at")), ack=str(t["id"]))
+
+
 def _strip(html: str) -> str:
-    import re
     return re.sub(r"<[^>]+>", " ", html).replace("&nbsp;", " ").strip()

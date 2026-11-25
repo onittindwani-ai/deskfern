@@ -1212,6 +1212,45 @@
     }
    }
   },
+  "/api/customers/lift-erasure": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Accept messages and imports from an erased address again (owner only). Audited. Nothing that was erased comes back.",
+    "operationId": "lift_erasure_api_customers_lift_erasure_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EraseIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/approvals": {
    "get": {
     "tags": [

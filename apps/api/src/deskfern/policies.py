@@ -91,7 +91,25 @@ def refunds_by_customer(session: Session, today: date, customer_id: int | None =
     out: dict[int, list[str]] = {}
     for cid, charge in session.execute(stmt):
         out.setdefault(cid, []).append(charge)
+    _add_erased_history(session, since, out, customer_id)
     return out
+
+
+def _add_erased_history(session: Session, since: datetime, out: dict[int, list[str]], customer_id: int | None) -> None:
+    """Refunds of a customer who was erased carry a salted hash of the address instead of a customer link (privacy.py). If that address is a customer again (the owner lifted the erasure
+    and imported them), those refunds still count, so erasing and importing someone is never a way to a second refund inside 12 months."""
+    from deskfern.privacy import email_hash
+
+    by_hash: dict[str, list[str]] = {}
+    for charge, why in session.execute(select(PolicyAction.charge_id, PolicyAction.rationale).where(PolicyAction.kind == "refund", PolicyAction.status.in_(ACTIVE_REFUND), PolicyAction.created_at >= since)):
+        h = why.get("customer_hash") if isinstance(why, dict) else None
+        if h:
+            by_hash.setdefault(h, []).append(charge)
+    if not by_hash:
+        return
+    stmt = select(Customer) if customer_id is None else select(Customer).where(Customer.id == customer_id)
+    for c in session.scalars(stmt):
+        out.setdefault(c.id, []).extend(by_hash.get(email_hash(session, c.email), []))
 
 
 def refunds_paid_here(session: Session, c: Customer | None, today: date, known: dict[int, list[str]] | None = None) -> int:

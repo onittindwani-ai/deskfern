@@ -6,7 +6,12 @@ the test cases that were made from their tickets, and the customer's name in ref
 importing the customer file again, or a new message from that address, does not bring the person back. The audit log keeps the fact that an erase happened (who, when, how many
 tickets), never the address. Backups made before the erase still hold the data until they are rotated out (docs/11).
 
-The retention job does the same for old finished tickets, so customer words do not stay for ever.
+The retention job does the same for old finished tickets, so customer words do not stay for ever. A ticket it empties keeps its link to the customer (words are gone, the account link stays),
+so the one refund per 12 months rule still sees every refund the desk handled, however short RETENTION_DAYS is.
+
+One thing outlives an erase besides the address hash: on each refund record of an erased customer a salted hash of the address (`rationale.customer_hash`) is kept. It holds no name or address
+and cannot be read back, but it lets the 12 month refund rule still count that refund if the owner later lifts the erasure and the customer is imported again. Without it, erasing and
+re-importing a customer would give them a second refund inside the 12 months.
 """
 
 from __future__ import annotations
@@ -80,8 +85,10 @@ def _tickets_of(session: Session, email: str) -> list[Ticket]:
     return list(session.scalars(select(Ticket).where(cond)))
 
 
-def _drop_words(session: Session, tickets: list[Ticket]) -> dict:
-    """Remove everything a customer wrote or was told from these tickets. A ticket a refund record points at stays as an empty shell, any other is deleted."""
+def _drop_words(session: Session, tickets: list[Ticket], erased_hash: str | None = None) -> dict:
+    """Remove everything a customer wrote or was told from these tickets. A ticket a refund record points at stays as an empty shell, any other is deleted.
+    A shell keeps its customer link, so the refund history still counts (the retention job). When a person is erased (`erased_hash` is given) the link is cut and the refund
+    records carry the salted hash of the address instead, which is the only thing kept."""
     ids = [t.id for t in tickets]
     if not ids:
         return {"tickets": 0, "kept_as_shell": 0, "test_cases": 0}
@@ -105,8 +112,12 @@ def _drop_words(session: Session, tickets: list[Ticket]) -> dict:
             session.execute(delete(Message).where(Message.ticket_id == t.id))
             for a in list(t.answers):
                 session.delete(a)
-            t.subject, t.requester_email, t.customer_id, t.status, t.flags = "(erased)", "", None, "closed", []
+            t.subject, t.requester_email, t.status, t.flags = "(erased)", "", "closed", []
             t.external_id = f"erased-{t.id}"
+            if erased_hash is not None:
+                t.customer_id = None
+                for act in session.scalars(select(PolicyAction).where(PolicyAction.ticket_id == t.id)):
+                    act.rationale = {**(act.rationale or {}), "customer_hash": erased_hash}
         else:
             session.delete(t)
     session.flush()
@@ -123,7 +134,7 @@ def erase_customer(session: Session, email: str, actor: str) -> dict:
     ids = [t.id for t in tickets]
     if ids and session.scalar(select(PolicyAction.id).where(PolicyAction.ticket_id.in_(ids), PolicyAction.status.in_(PENDING_REFUND))) is not None:
         raise EraseBlocked("A refund for this customer is still waiting, approved or being paid. Decide or reject it first, then erase.")
-    report = _drop_words(session, tickets)
+    report = _drop_words(session, tickets, erased_hash=email_hash(session, addr))
     if cust is not None:
         session.execute(delete(HealthScore).where(HealthScore.customer_id == cust.id))
         session.delete(cust)
@@ -133,6 +144,19 @@ def erase_customer(session: Session, email: str, actor: str) -> dict:
     session.flush()
     record_audit(session, actor, "customer.erased", "customer", {"tickets": report["tickets"], "kept_as_shell": report["kept_as_shell"], "had_customer_record": cust is not None})
     return {**report, "customer_record": cust is not None, "suppressed": True}
+
+
+def lift_erasure(session: Session, email: str, actor: str) -> dict:
+    """Accept messages and imports from an erased address again. Only the suppression is removed; nothing that was erased comes back. The audit log records who did it, never the address."""
+    addr = normalize_email(email)
+    if "@" not in addr:
+        raise EraseBlocked("Give the customer's email address.")
+    row = session.scalar(select(Erased).where(Erased.email_hash == email_hash(session, addr)))
+    if row is not None:
+        session.delete(row)
+    session.flush()
+    record_audit(session, actor, "customer.erasure_lifted", "customer", {"was_erased": row is not None})
+    return {"lifted": row is not None}
 
 
 def purge_old(session: Session, ctx) -> dict:

@@ -3,6 +3,7 @@
   python -m deskfern.admin import-customers customers.csv     add or update customers (plan and payment facts that refund answers read)
   python -m deskfern.admin sync-knowledge                      read the KNOWLEDGE_DIR folder into the knowledge base
   python -m deskfern.admin erase-customer person@example.com   erase one customer and their tickets on request (cannot be undone; see docs/11)
+  python -m deskfern.admin lift-erasure person@example.com     accept messages and imports from an erased address again (nothing erased comes back)
 
 ENV_FILE names another settings file than .env, as for the API and the worker.
 """
@@ -42,6 +43,8 @@ def run(argv: list[str], settings: Settings | None = None) -> int:
     sub.add_parser("sync-knowledge", help="read the KNOWLEDGE_DIR folder")
     e = sub.add_parser("erase-customer", help="erase one customer and their tickets on request (cannot be undone)")
     e.add_argument("email")
+    lift = sub.add_parser("lift-erasure", help="accept messages and imports from an erased address again")
+    lift.add_argument("email")
     args = ap.parse_args(argv)
     settings = settings or Settings(_env_file=os.environ.get("ENV_FILE", ".env"))
     settings.check_runtime()
@@ -52,6 +55,8 @@ def run(argv: list[str], settings: Settings | None = None) -> int:
                 report = importing.import_customers(s, Path(args.file).read_text(encoding="utf-8-sig"))
             elif args.cmd == "erase-customer":
                 report = privacy.erase_customer(s, args.email, "command line")
+            elif args.cmd == "lift-erasure":
+                report = privacy.lift_erasure(s, args.email, "command line")
             else:
                 report = importing.sync_knowledge_folder(s, ctx)
     except (importing.ImportProblem, privacy.EraseBlocked, OSError) as exc:

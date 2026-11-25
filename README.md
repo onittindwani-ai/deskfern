@@ -19,7 +19,7 @@ All numbers come from `data/counts.json`, written by `tools/make_counts.py`.
 
 | What | Result |
 | --- | --- |
-| Python tests | <!--n:tests.passed-->429<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped, <!--n:tests.coverage_percent-->93.9<!--/n--> percent coverage |
+| Python tests | <!--n:tests.passed-->483<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped, <!--n:tests.coverage_percent-->94.2<!--/n--> percent coverage |
 | Browser tests | <!--n:e2e.tests-->38<!--/n--> tests (smoke, demo path, quality gates) |
 | Pages | <!--n:pages-->10<!--/n--> |
 | Screenshots | <!--n:screenshots-->35<!--/n--> at phone and desktop widths |

@@ -43,7 +43,16 @@ class InboundTicket:
     name: str = ""
     created_at: datetime | None = None
     verified: bool = False  # the channel proved the sender address itself (for example a mail server that passed DMARC)
-    ack: str = ""  # what the source needs back once the message is safely stored (an IMAP uid), so mail is marked read only after that
+    ack: str = ""  # what the source needs back once the message is safely stored (an IMAP uid or a Zendesk ticket number), so mail is marked read only after that, and a message that could not be stored holds the cursor back
+    stub: str = ""  # set when the message could not be read here ("too_large", "unreadable"): the desk stores a small ticket that needs a person instead of the message (see intake.py)
+
+
+def json_body(r: httpx.Response, what: str):
+    """The JSON of an answer. An answer that is not JSON (a login page or an error page that came back with a success code) is an AdapterError that names the service, never a crash."""
+    try:
+        return r.json()
+    except ValueError:
+        raise AdapterError(f"{what} answered with something that is not data (HTTP {r.status_code}). Check the address and the key, and that a sign in page is not in the way.") from None
 
 
 @dataclass

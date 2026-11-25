@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import itertools
 from datetime import date
 from pathlib import Path
 
@@ -24,6 +25,10 @@ COLUMNS = ("email", "name", "plan", "interval", "seats", "first_paid", "last_pai
 
 class ImportProblem(ValueError):
     """The whole file cannot be read (too big, empty, or no email column). The message is plain words for the person importing."""
+
+
+def _why(exc: csv.Error) -> str:
+    return "a value is longer than the reader allows" if "field larger" in str(exc) else "a line is not a valid table row"
 
 
 def _int(value: str, name: str, low: int = 0, high: int = 10**9) -> int:
@@ -74,14 +79,18 @@ def import_customers(session: Session, text: str) -> dict:
     if len(text) > MAX_CSV_CHARS:
         raise ImportProblem(f"The file is too large (over {MAX_CSV_CHARS:,} characters). Split it into smaller files.")
     reader = csv.DictReader(io.StringIO(text.lstrip("﻿")))
-    names = [(n or "").strip().lower() for n in (reader.fieldnames or [])]
-    if "email" not in names:
-        raise ImportProblem("The first line must name the columns, and one of them must be email. The columns are: " + ", ".join(COLUMNS) + ".")
-    reader.fieldnames = names
+    try:
+        names = [(n or "").strip().lower() for n in (reader.fieldnames or [])]
+        if "email" not in names:
+            raise ImportProblem("The first line must name the columns, and one of them must be email. The columns are: " + ", ".join(COLUMNS) + ".")
+        reader.fieldnames = names
+        records = list(itertools.islice(reader, MAX_ROWS + 1))  # read in full BEFORE anything is saved, so a damaged line cannot leave half a file imported
+    except csv.Error as exc:
+        raise ImportProblem(f"The file could not be read as a table ({_why(exc)}). Check that every value is under {csv.field_size_limit():,} characters and that quotes are closed.") from None
     report = {"created": 0, "updated": 0, "skipped": 0, "errors": [], "ignored_columns": [n for n in names if n and n not in COLUMNS]}
     seen: set[str] = set()
     present = set(names)  # an existing customer is changed only in the columns the file has: a file without refunds_12m keeps the number the desk already knows
-    for i, raw in enumerate(reader, start=2):  # line 1 is the header
+    for i, raw in enumerate(records, start=2):  # line 1 is the header
         if i - 1 > MAX_ROWS:
             raise ImportProblem(f"More than {MAX_ROWS} rows. Split the file and import it in parts.")
         row = {k: (v or "") for k, v in raw.items() if k}

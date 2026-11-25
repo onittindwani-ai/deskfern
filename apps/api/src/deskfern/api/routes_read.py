@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from deskfern import insights, policies
+from deskfern import desk, insights, policies
 from deskfern.api.deps import db, get_ctx
 from deskfern.api.serializers import answer_row, customer_row, iso, ticket_row
 from deskfern.context import Ctx
@@ -23,6 +23,7 @@ def overview(s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_
     o = insights.overview(s, ctx.now(s))
     o["pending_approvals"] = s.query(Approval).filter(Approval.status == "pending").count()
     o["open_gaps"] = s.query(Gap).filter(Gap.status == "open").count()
+    o["intake_notes"] = desk.intake_warnings(s, ctx.now(s))  # what intake has noticed (unreadable helpdesk answers, mail the desk could not read, messages from erased addresses), so it is never only in a log
     return o
 
 
