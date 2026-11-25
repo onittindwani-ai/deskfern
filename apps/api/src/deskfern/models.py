@@ -119,7 +119,7 @@ class Answer(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ticket_id: Mapped[int] = mapped_column(ForeignKey("lh_ticket.id"), index=True)
     decision: Mapped[str] = mapped_column(String(12))  # answer, escalate, refuse
-    status: Mapped[str] = mapped_column(String(12), default="draft")  # draft, edited, sent, discarded
+    status: Mapped[str] = mapped_column(String(12), default="draft")  # draft; held (nothing left: draft mode or Pause all); sending (claimed, not confirmed); sent; edited (sent with the agent's edit); discarded
     text: Mapped[str] = mapped_column(Text, default="")
     sentences: Mapped[list] = mapped_column(JSON, default=list)  # {text, supported, support, chunk_ids, removed, reason}
     retrieval_strength: Mapped[float] = mapped_column(Float, default=0.0)

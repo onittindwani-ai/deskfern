@@ -12,7 +12,7 @@ Customer, Source, Document, Chunk, Ticket, TicketMessage, Answer (a draft with s
 4. Intake: Chatwoot webhook (signature and timestamp check), email (IMAP), Intercom, Zendesk, Freshdesk (tier B) all become Ticket and TicketMessage.
 5. Triage: category, urgency, sentiment, language, flags (injection, other customer data, out of scope) by rules (offline stand in, not a language model).
 6. Answer: retrieve, draft sentences, cite chunks, run the groundedness check, compute the confidence meter (retrieval strength, groundedness, policy match). Unsupported sentences are removed; if too little remains the ticket is escalated.
-7. Policy actions: a refund is a PolicyAction that only exists as an approval request. It runs only after a different person approves it. Draft mode records the intent and sends nothing.
+7. Policy actions: a refund is a PolicyAction that only exists as an approval request. It runs only after a different person approves it (a refund a person asked for is asked in their name). Draft mode keeps an approved refund as approved, not paid yet, sends nothing, and it is paid later when draft mode and the kill switch are off.
 8. Learn: an agent edit to a draft becomes a regression TestCase. Questions with no good source cluster into Gaps. Health score and churn risk come from ticket history.
 
 ## Hard limits

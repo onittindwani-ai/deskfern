@@ -17,6 +17,10 @@ from deskfern import netguard
 
 AGENT = "DeskfernBot"
 MAX_REDIRECTS = 3
+MAX_DELAY_S = 10.0  # the most a site's Crawl-delay (or CRAWL_DELAY_S) can slow the crawl between two pages
+PAGE_DEADLINE_S = 30.0  # the most one page may take to arrive, however slowly the site drips it
+DEFAULT_DEADLINE_S = 120.0  # the most one whole crawl may take
+DEFAULT_TOTAL_BYTES = 10_000_000  # the most one whole crawl may read
 
 
 @dataclass
@@ -71,11 +75,18 @@ def parse_html(html: str) -> tuple[str, str, list[str]]:
 
 
 class Crawler:
-    def __init__(self, client: httpx.Client | None = None, resolver: Callable = netguard.default_resolver, sleep: Callable[[float], None] = time.sleep, max_pages: int = 25, max_depth: int = 3, max_bytes: int = 1_000_000, delay_s: float = 0.5):
-        self.client = client or httpx.Client(timeout=15, headers={"User-Agent": AGENT})
-        self.resolver, self.sleep = resolver, sleep
-        self.max_pages, self.max_depth, self.max_bytes, self.delay_s = max_pages, max_depth, max_bytes, delay_s
+    def __init__(self, client: httpx.Client | None = None, resolver: Callable = netguard.default_resolver, sleep: Callable[[float], None] = time.sleep, max_pages: int = 25, max_depth: int = 3, max_bytes: int = 1_000_000, delay_s: float = 0.5,
+                 deadline_s: float = DEFAULT_DEADLINE_S, max_total_bytes: int = DEFAULT_TOTAL_BYTES, clock: Callable[[], float] = time.monotonic):
+        self.client = client or httpx.Client(timeout=httpx.Timeout(10.0, connect=5.0), headers={"User-Agent": AGENT})  # each read is short; the deadlines below cover a site that drips its answer
+        self.resolver, self.sleep, self.clock = resolver, sleep, clock
+        self.max_pages, self.max_depth, self.max_bytes, self.delay_s = max_pages, max_depth, max_bytes, min(max(delay_s, 0.0), MAX_DELAY_S)
+        self.deadline_s, self.max_total_bytes = deadline_s, max_total_bytes
+        self._deadline: float | None = None  # set when a crawl starts
+        self._total = 0
         self._robots: dict[str, urllib.robotparser.RobotFileParser | None] = {}
+
+    def _time_left(self) -> float:
+        return float("inf") if self._deadline is None else self._deadline - self.clock()
 
     def _fetch(self, url: str):
         """One safe GET with manual redirects. Returns (final_url, response, body_text) or raises UnsafeURL."""
@@ -90,11 +101,14 @@ class Crawler:
                 ctype = r.headers.get("content-type", "")
                 if not (ctype.startswith("text/html") or ctype.startswith("text/plain")):
                     return url, r, None
-                body = b""
+                body, give_up = b"", self.clock() + min(PAGE_DEADLINE_S, max(self._time_left(), 0.0))
                 for chunk in r.iter_bytes():
                     body += chunk
                     if len(body) > self.max_bytes:
                         return url, r, "TOO_BIG"
+                    if self.clock() > give_up:  # a site that drips its page a few bytes at a time cannot hold the crawl for ever
+                        return url, r, "TOO_SLOW"
+                self._total += len(body)
                 return url, r, body.decode(r.encoding or "utf-8", errors="replace")
         raise netguard.UnsafeURL("Too many redirects.")
 
@@ -104,8 +118,8 @@ class Crawler:
             rp = urllib.robotparser.RobotFileParser()
             try:
                 _, r, body = self._fetch(origin + "/robots.txt")
-                rp.parse((body or "").splitlines()) if r.status_code == 200 and body and body != "TOO_BIG" else rp.parse([])
-                self.delay_s = max(self.delay_s, float(rp.crawl_delay(AGENT) or 0))
+                rp.parse((body or "").splitlines()) if r.status_code == 200 and body and body not in {"TOO_BIG", "TOO_SLOW"} else rp.parse([])
+                self.delay_s = min(MAX_DELAY_S, max(self.delay_s, float(rp.crawl_delay(AGENT) or 0)))  # a site cannot ask for a pause longer than MAX_DELAY_S
             except netguard.UnsafeURL:
                 raise
             except Exception:
@@ -117,8 +131,15 @@ class Crawler:
         res = CrawlResult()
         netguard.check_url(start, self.resolver)
         origin = urlparse(start).netloc
+        self._deadline, self._total = self.clock() + self.deadline_s, 0
         queue, seen = [(urldefrag(start)[0], 0)], set()
         while queue and len(res.pages) < self.max_pages:
+            if self._time_left() <= 0:
+                res.skipped.append((queue[0][0], f"stopped: the crawl reached its time limit of {int(self.deadline_s)} seconds"))
+                break
+            if self._total >= self.max_total_bytes:
+                res.skipped.append((queue[0][0], f"stopped: the crawl read its limit of {self.max_total_bytes} bytes"))
+                break
             url, depth = queue.pop(0)
             if url in seen:
                 continue
@@ -130,7 +151,7 @@ class Crawler:
                 if not self._allowed(url):
                     res.skipped.append((url, "blocked by robots.txt"))
                     continue
-                self.sleep(self.delay_s)
+                self.sleep(min(self.delay_s, max(self._time_left(), 0.0)))
                 final, r, body = self._fetch(url)
             except netguard.UnsafeURL as exc:
                 res.skipped.append((url, f"refused: {exc}"))
@@ -146,6 +167,9 @@ class Crawler:
                 continue
             if body == "TOO_BIG":
                 res.skipped.append((url, f"larger than {self.max_bytes} bytes"))
+                continue
+            if body == "TOO_SLOW":
+                res.skipped.append((url, f"took longer than {int(PAGE_DEADLINE_S)} seconds to arrive"))
                 continue
             title, text, links = parse_html(body) if "html" in r.headers.get("content-type", "") else (url, body, [])
             if text.strip():

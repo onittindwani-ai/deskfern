@@ -23,8 +23,15 @@ export default function KnowledgePage() {
   const start = useMutation({
     mutationFn: async () => {
       const r = await post<{ crawl_job_id: number }>("/knowledge/sources", { kind: "site", name: url.replace(/^\w+:\/\//, "").slice(0, 60), uri: url });
-      const j = await get<{ status: string; fetched: number; skipped: number; log: string[] }>(`/knowledge/crawl/${r.crawl_job_id}`);
+      const read = () => get<{ status: string; fetched: number; skipped: number; log: string[] }>(`/knowledge/crawl/${r.crawl_job_id}`);
+      let j = await read();
       setCrawl(j);
+      for (let i = 0; (j.status === "queued" || j.status === "running") && i < 90; i++) { // a real site is crawled by the worker: look again every two seconds, for up to three minutes
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        j = await read();
+        setCrawl(j);
+      }
+      if (j.status === "queued" || j.status === "running") throw new Error("The crawl is still running in the background. Look at the Pages tab again in a few minutes.");
       if (j.status !== "done") throw new Error(j.log[0] ?? "The crawl failed."); // a failed crawl is an error, so the button shows no success tick
       return j;
     },
@@ -65,9 +72,9 @@ export default function KnowledgePage() {
                 <Textarea label="Page text" value={body} onChange={(e) => setBody(e.target.value)} hint="Plain text or Markdown. It is split into searchable passages." />
                 <div><Button variant="primary" disabled={!canWrite || title.trim().length < 2 || body.trim().length < 20} disabledReason={!canWrite ? "Viewers cannot add pages" : "Give the page a title and at least 20 characters of text"} onClick={async () => { await add.mutateAsync(); }}>Add the page</Button></div></div>
             ) : (
-              <div className="lh-stack"><Field label="Site address" value={url} onChange={setUrl} hint="In the demo only the sample site works. On a real install, private and local addresses are always refused, robots.txt is followed, and the crawl is capped." />
+              <div className="lh-stack"><Field label="Site address" value={url} onChange={setUrl} hint="In the demo only the sample site works. On a real install, private and local addresses are always refused, robots.txt is followed, and the crawl is capped (pages, size and time). A real site is read by the worker, so the worker must be running; this page waits and shows how it goes." />
                 <div><Button variant="primary" disabled={!canWrite} disabledReason="Viewers cannot start a crawl" onClick={async () => { await start.mutateAsync(); }}>Start the crawl</Button></div>
-                {crawl ? <div role="status" className="lh-stack"><Badge tone={crawl.status === "done" ? "success" : "danger"}>{crawl.status}</Badge><span className="lh-mini">{crawl.fetched} pages read, {crawl.skipped} skipped</span>{crawl.log.slice(0, 6).map((l) => <span key={l} className="lh-mini">{l}</span>)}</div> : null}</div>
+                {crawl ? <div role="status" className="lh-stack"><Badge tone={crawl.status === "done" ? "success" : crawl.status === "failed" ? "danger" : "neutral"}>{crawl.status}</Badge><span className="lh-mini">{crawl.fetched} pages read, {crawl.skipped} skipped</span>{crawl.log.slice(0, 6).map((l) => <span key={l} className="lh-mini">{l}</span>)}</div> : null}</div>
             )}
           </Card>
           <Card title="Knowledge folder" headingLevel={3}>

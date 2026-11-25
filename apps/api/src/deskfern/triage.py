@@ -11,11 +11,16 @@ from dataclasses import dataclass, field
 from deskfern.textproc import words
 
 INJECTION = [r"ignore (all |your |the |any )?(previous |prior |above )?(rules|instructions|policy|policies)", r"forget (the |your |all )?(policy|rules|instructions)", r"\bsystem\s*:", r"\bassistant\s*:", r"you are (now )?in (admin|developer|god) mode",
-             r"you are now allowed", r"(print|reveal|show|repeat) (me )?(your )?(hidden |secret |system )?(instructions|prompt)", r"<!--.*?-->", r"approve (the |a |any )?refunds? without", r"mark this ticket (as )?resolved",
+             r"you are now allowed", r"(print|reveal|show|repeat) (me )?(your )?(hidden |secret |system )?(instructions|prompt)", r"approve (the |a |any )?refunds? without", r"mark this ticket (as )?resolved",
              r"admin mode", r"override (the )?(policy|rules)", r"(list|give me|send me) every customer",
              r"\bdisregard\b", r"\bnew instructions?\b", r"\bact as (the |an? )?(admin|manager|system|unrestricted)", r"\bpretend (that )?(you|to be)\b", r"(reveal|print|output|show).{0,30}(system prompt|your (rules|configuration|instructions))",
-             r"\bbypass (the )?(policy|rules|approval|check|review)", r"\[(system|admin|assistant)\]", r"-{3,}\s*(system|instructions?)", r"(refund|pay|credit|send).{0,40}without (checking|approval|review|asking|a person)", r"\bjailbreak\b", r"do anything now", r"\bnote to (the )?(ai|assistants?|bots?|models?|llms?|agents?)\b", r"\bwhen (a |any )?(customer|user)s? (asks?|writes?|mentions?).{0,80}\b(say|tell|reply|respond|answer|send)\b", r"\b(reply|answer|respond|say|output) only (with|in)\b", r"\bonly (reply|answer|respond) with\b", r"\b(ai|assistant|bot|chatbot)\b[,:]? (please )?(print|reveal|give|apply|ignore|send|generate|issue|grant|approve)\b",
+             r"\bbypass (the )?(policy|rules|approval|check|review)", r"\[(system|admin|assistant)\]", r"-{3,20}\s{0,20}(system|instructions?)", r"(refund|pay|credit|send).{0,40}without (checking|approval|review|asking|a person)", r"\bjailbreak\b", r"do anything now", r"\bnote to (the )?(ai|assistants?|bots?|models?|llms?|agents?)\b", r"\bwhen (a |any )?(customer|user)s? (asks?|writes?|mentions?).{0,80}\b(say|tell|reply|respond|answer|send)\b", r"\b(reply|answer|respond|say|output) only (with|in)\b", r"\bonly (reply|answer|respond) with\b", r"\b(ai|assistant|bot|chatbot)\b[,:]? (please )?(print|reveal|give|apply|ignore|send|generate|issue|grant|approve)\b",
              r"\b(vergiss|ignoriere|ignora|ignorez|oublie|olvida)\b.{0,40}(anweisung|regeln|instruc|r[eè]gles|instructions)"]
+COMMENT_MARK = r"<!--.*?-->"  # an HTML comment hides text from a reader; it is found with plain string search below, because a pattern for it is slow on thousands of openers with no closer
+MAX_SCAN = 20_000  # a message body is stored at most this long; nothing longer is ever scanned
+HARD_CAP = 400_000  # what is even looked at before padding is squeezed out
+_SCAN = [re.compile(p, re.I | re.S) for p in INJECTION]
+_RUN = re.compile(r"(.)\1{3,}", re.S)
 PRIVACY = [r"(owner|ceo|assistant|partner|colleague|boss|employee|ex[- ]\w+( \w+)?) (of|at|from|for)\b.{0,60}\b(workspace|account|company|labs|legal|logistics|events)\b", r"\b(her|his|their|colleague'?s|owner'?s) (invoices?|receipts?|billing|card|password|email)",
            r"\b(list|tell me) (the )?(members|users|emails?) (of|for)\b", r"on file for \S+@", r"\bex[- ](employee|colleague|business partner)\b", r"(card details|last four|billing history|password)\b.{0,40}\b(owner|account of|workspace)\b",
            r"what email does the .{0,40} owner", r"(owner|member)s? of the .{0,30} workspace",
@@ -79,15 +84,44 @@ def detect_language(text: str) -> str:
     return best if score >= 2 and score > en else "en"
 
 
+def _squeeze(text: str) -> str:
+    """The text as the scans read it: any run of one repeated character (padding such as twenty thousand dashes) reduced to three, then cut to MAX_SCAN.
+    Squeezing comes first, so padding cannot push a phrase out of the scanned part. A run longer than three means the same to every pattern here,
+    and it is what makes a pattern slow."""
+    return _RUN.sub(lambda m: m.group(1) * 3, text[:HARD_CAP])[:MAX_SCAN]
+
+
+def _has_comment(text: str) -> bool:
+    start = text.find("<!--")
+    return start >= 0 and text.find("-->", start + 4) >= 0
+
+
+def _drop_comments(text: str) -> str:
+    """Remove every <!-- ... --> in one pass. A comment that is never closed hides the rest of the text, as it does in a browser."""
+    out, at = [], 0
+    while True:
+        start = text.find("<!--", at)
+        if start < 0:
+            out.append(text[at:])
+            return " ".join(out)
+        out.append(text[at:start])
+        end = text.find("-->", start + 4)
+        if end < 0:
+            return " ".join(out)
+        at = end + 3
+
+
 def find_injection(text: str) -> list[str]:
-    return [p for p in INJECTION if re.search(p, text, re.I | re.S)]
+    text = _squeeze(text)
+    found = [rx.pattern for rx in _SCAN if rx.search(text)]
+    return found + [COMMENT_MARK] if _has_comment(text) else found
 
 
 def strip_injection(text: str) -> str:
     """Remove the sentences that try to steer the system, so only the real question is searched."""
-    text = re.sub(r"<!--.*?-->", " ", text, flags=re.S)
+    text = _drop_comments(_squeeze(text))
     parts = re.split(r"(?<=[.!?])\s+", text)
-    keep = [p for p in parts if not any(re.search(pat, p, re.I) for pat in INJECTION) and not re.search(r"\bapprove refund\b", p, re.I)]
+    keep = [p for p in parts if not any(rx.search(p) for rx in _SCAN) and not re.search(r"\bapprove refund\b", p, re.I)]
     return " ".join(keep).strip()
 
 

@@ -17,7 +17,7 @@ from email.message import EmailMessage
 from email.policy import default as default_policy
 from email.utils import make_msgid, parseaddr
 
-from deskfern.adapters.base import InboundTicket
+from deskfern.adapters.base import DeliveryUnknown, InboundTicket
 from deskfern.util import clean_header
 from sendora_core.adapters import AdapterError
 from sendora_core.safety import write_action
@@ -25,6 +25,9 @@ from sendora_core.safety import write_action
 log = logging.getLogger("deskfern.imap")
 RESULT = re.compile(r"^\s*([A-Za-z][A-Za-z0-9-]*)\s*=\s*([A-Za-z]+)")
 MAX_BODY = 20000
+MAX_PER_RUN = 50  # messages taken in one run; the rest are read in the next run, so a flooded inbox never fills memory or the database in one go
+MAX_MESSAGE_BYTES = 2_000_000  # a message larger than this is not downloaded (its size is asked for first); it stays unread in the inbox for a person
+_SIZE = re.compile(rb"RFC822\.SIZE\s+(\d+)", re.I)
 
 
 def is_loopback(host: str) -> bool:
@@ -58,15 +61,37 @@ def sender_is_authenticated(msg, authserv_id: str) -> bool:
     return results.get("dmarc") == "pass"
 
 
-def _text_of(msg) -> str:
-    part = msg.get_body(preferencelist=("plain",))
-    if part is None:
-        return ""
+def _content(part) -> str:
     try:
-        return part.get_content()[:MAX_BODY]
+        return part.get_content()
     except (LookupError, ValueError):  # an unknown or broken charset: read the bytes and replace what cannot be read
         raw = part.get_payload(decode=True) or b""
-        return raw.decode("utf-8", errors="replace")[:MAX_BODY]
+        return raw.decode("utf-8", errors="replace")
+
+
+def _text_of(msg) -> str:
+    """The words of a message: its plain text part, or, for a mail that only has an HTML part, that part with the tags taken out (scripts and styles dropped)."""
+    plain = msg.get_body(preferencelist=("plain",))
+    text = _content(plain) if plain is not None else ""
+    if not text.strip():
+        html = msg.get_body(preferencelist=("html",))
+        if html is not None:
+            from deskfern.crawler import parse_html
+
+            text = parse_html(_content(html))[1]
+    return text[:MAX_BODY]
+
+
+def _size_of(c, uid: str) -> int | None:
+    try:
+        _, parts = c.uid("FETCH", uid, "(RFC822.SIZE)")
+    except imaplib.IMAP4.error:
+        return None
+    for p in parts or []:
+        m = _SIZE.search(p if isinstance(p, bytes) else (p[0] if p else b""))
+        if m:
+            return int(m.group(1))
+    return None
 
 
 class _Base:
@@ -129,9 +154,15 @@ class ImapInbox(_Base):
                 c.select("INBOX")
                 _, data = c.uid("SEARCH", None, "UNSEEN")
                 for uid in (data[0] or b"").split():
+                    if len(out) >= MAX_PER_RUN:
+                        break  # the rest wait for the next run; they stay unread
                     try:
+                        size = _size_of(c, uid.decode())
+                        if size is not None and size > MAX_MESSAGE_BYTES:
+                            log.warning("left one message unread because it is larger than %d bytes (uid %s)", MAX_MESSAGE_BYTES, uid.decode(errors="replace"))
+                            continue  # not counted towards the cap, so big messages can never block the small ones behind them
                         _, parts = c.uid("FETCH", uid.decode(), "(BODY.PEEK[])")  # PEEK: reading does not mark the mail as read
-                        if not parts or not parts[0]:
+                        if not parts or not parts[0] or len(parts[0][1]) > MAX_MESSAGE_BYTES:
                             continue
                         msg = email.message_from_bytes(parts[0][1], policy=default_policy)
                         sender = parseaddr(str(msg["From"] or ""))
@@ -193,15 +224,26 @@ class SmtpSender(_Base):
         if re.fullmatch(r"<[^<>\s]+>", ref):  # only a real looking Message-ID, so a reply stays in the customer's thread
             m["In-Reply-To"] = m["References"] = ref
         m.set_content(body)
+        host = self.settings.smtp_host
         try:
-            with self._smtp() as c:
-                c.send_message(m)
+            c = self._smtp()  # connect, check the certificate, sign in: nothing has been sent yet, so any failure here is safe to try again
         except smtplib.SMTPAuthenticationError as exc:
             raise AdapterError("The mail server rejected the user name or password. For Gmail use an app password.") from exc
         except ssl.SSLCertVerificationError as exc:
-            raise AdapterError(f"The certificate of {self.settings.smtp_host} could not be verified, so nothing was sent. Check SMTP_HOST and the port.") from exc
+            raise AdapterError(f"The certificate of {host} could not be verified, so nothing was sent. Check SMTP_HOST and the port.") from exc
+        except AdapterError:
+            raise
         except (smtplib.SMTPException, OSError) as exc:
-            raise AdapterError(f"Could not send through {self.settings.smtp_host}: {type(exc).__name__}.") from exc
+            raise AdapterError(f"Could not send through {host}: {type(exc).__name__}.") from exc
+        try:
+            with c:
+                c.send_message(m)
+        except (smtplib.SMTPServerDisconnected, ConnectionError, TimeoutError, ssl.SSLError) as exc:  # the line dropped or went quiet after the message may have been handed over
+            raise DeliveryUnknown(f"The connection to {host} ended before it confirmed the message ({type(exc).__name__}). It may or may not have been delivered.") from exc
+        except smtplib.SMTPException as exc:  # the server answered with a refusal: it did not take the message
+            raise AdapterError(f"Could not send through {host}: {type(exc).__name__}.") from exc
+        except OSError as exc:
+            raise DeliveryUnknown(f"The connection to {host} failed while sending ({type(exc).__name__}). It may or may not have been delivered.") from exc
         return m["Message-ID"]
 
     def healthcheck(self) -> tuple[bool, str]:

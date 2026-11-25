@@ -4,7 +4,7 @@ A support desk that answers customer questions from your own help pages and show
 
 - Reads your help pages, policies and past answers (a folder, Google Drive, Notion or a website).
 - Answers a ticket with citations, scores every sentence against its sources, and hands over to a person when it is not sure.
-- Refunds go through an approval. The person who asks cannot approve their own request. Nothing is sent or paid in draft mode.
+- Refunds go through an approval. The person who asks cannot approve their own request, and a live install that can pay refunds needs a separate approver login. A refund approved while draft mode or Pause all is on is paid later, once, when both are off. Nothing is sent or paid in draft mode, and a reply held back that way leaves the ticket open.
 - Turns an agent's edit into a test case, finds pages that are missing or disagree, and shows customer health.
 
 ![Ticket workspace](docs/screenshots/state-2-detail-cited-answer-desktop.png)
@@ -19,7 +19,7 @@ All numbers come from `data/counts.json`, written by `tools/make_counts.py`.
 
 | What | Result |
 | --- | --- |
-| Python tests | <!--n:tests.passed-->246<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped, <!--n:tests.coverage_percent-->93.3<!--/n--> percent coverage |
+| Python tests | <!--n:tests.passed-->333<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped, <!--n:tests.coverage_percent-->93.7<!--/n--> percent coverage |
 | Browser tests | <!--n:e2e.tests-->38<!--/n--> tests (smoke, demo path, quality gates) |
 | Pages | <!--n:pages-->10<!--/n--> |
 | Screenshots | <!--n:screenshots-->35<!--/n--> at phone and desktop widths |

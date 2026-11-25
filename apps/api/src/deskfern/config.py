@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import Field, field_validator
 
 from deskfern import sla
-from sendora_core.settings import BaseAppSettings, Mode
+from sendora_core.settings import MIN_SECRET_LENGTH, PLACEHOLDER_SECRET, BaseAppSettings, Mode
 
 DEFAULT_OWNER_EMAIL = "owner@example.test"
 DEFAULT_COMPANY_NAME = "Fieldnote Software"
@@ -20,14 +20,14 @@ CHANNELS = ("chatwoot", "intercom", "zendesk", "freshdesk", "email")
 
 class Settings(BaseAppSettings):
     app_name: str = "deskfern"
-    database_url: str = "sqlite:///./deskfern.sqlite3"
+    database_url: str = Field(default="sqlite:///./deskfern.sqlite3", repr=False)  # a server address carries the database password, so it is never printed
 
     owner_email: str = DEFAULT_OWNER_EMAIL
-    owner_password_hash: str | None = None
+    owner_password_hash: str | None = Field(default=None, repr=False)
     approver_email: str | None = None
-    approver_password_hash: str | None = None
+    approver_password_hash: str | None = Field(default=None, repr=False)
     viewer_email: str | None = None  # read only role: may look at everything, change nothing
-    viewer_password_hash: str | None = None
+    viewer_password_hash: str | None = Field(default=None, repr=False)
     login_burst: int = Field(default=5, ge=1, le=1000)  # sign in tries in a row before a short wait; the browser tests raise it
 
     # Who the desk speaks for. The defaults are the demo company's placeholders: problems() lists them, and a live start outside demo mode is refused until they are real.
@@ -48,29 +48,29 @@ class Settings(BaseAppSettings):
     seed_dir: str = ""
 
     chatwoot_base_url: str = ""
-    chatwoot_api_token: str = ""
+    chatwoot_api_token: str = Field(default="", repr=False)
     chatwoot_account_id: str = ""
-    chatwoot_webhook_secret: str = ""
-    intercom_token: str = ""
+    chatwoot_webhook_secret: str = Field(default="", repr=False)
+    intercom_token: str = Field(default="", repr=False)
     intercom_admin_id: str = ""
     intercom_base_url: str = "https://api.intercom.io"
     zendesk_subdomain: str = ""
     zendesk_email: str = ""
-    zendesk_token: str = ""
+    zendesk_token: str = Field(default="", repr=False)
     zendesk_base_url: str = ""
     freshdesk_domain: str = ""
-    freshdesk_api_key: str = ""
+    freshdesk_api_key: str = Field(default="", repr=False)
     freshdesk_base_url: str = ""
-    stripe_secret_key: str = ""
+    stripe_secret_key: str = Field(default="", repr=False)
     stripe_base_url: str = "https://api.stripe.com"
-    drive_token: str = ""
+    drive_token: str = Field(default="", repr=False)
     drive_base_url: str = "https://www.googleapis.com"
-    notion_token: str = ""
+    notion_token: str = Field(default="", repr=False)
     notion_base_url: str = "https://api.notion.com"
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
-    smtp_password: str = ""
+    smtp_password: str = Field(default="", repr=False)
     smtp_use_tls: bool = True  # false is accepted only for a mail server on this same computer
     imap_host: str = ""
     imap_port: int = 993
@@ -91,7 +91,9 @@ class Settings(BaseAppSettings):
     crawl_max_pages: int = 25
     crawl_max_depth: int = 3
     crawl_max_bytes: int = 1_000_000
-    crawl_delay_s: float = 0.5
+    crawl_delay_s: float = Field(default=0.5, ge=0, le=10)  # CRAWL_DELAY_S: the pause between two pages (a site's own Crawl-delay can raise it, never above 10 seconds)
+    crawl_deadline_s: float = Field(default=120.0, ge=5, le=3600)  # CRAWL_DEADLINE_S: the most one whole crawl may take, then it stops with what it has
+    crawl_total_bytes: int = Field(default=10_000_000, ge=10_000)  # CRAWL_TOTAL_BYTES: the most one whole crawl may read
 
     @field_validator("currency")
     @classmethod
@@ -127,10 +129,36 @@ class Settings(BaseAppSettings):
             out.append(f"TRUSTED_SENDER_CHANNELS names unknown channels: {', '.join(bad)}. Use {', '.join(CHANNELS)}.")
         return out
 
+    def secret_problems(self) -> list[str]:
+        """A session secret anyone can guess lets anyone sign in as the owner. It must be real whenever an owner password exists or real replies and refunds can leave.
+        The shared base checks the same when DEMO_MODE is false; this covers a demo flag left on next to an owner password or MODE=live."""
+        weak = len(self.session_secret) < MIN_SECRET_LENGTH or bool(PLACEHOLDER_SECRET.search(self.session_secret))
+        if not weak or not (self.owner_password_hash or self.mode is Mode.LIVE):
+            return []
+        why = "an owner password is set" if self.owner_password_hash else "MODE is live"
+        return [f"SESSION_SECRET is too short (under {MIN_SECRET_LENGTH} characters) or still an example value, and {why}. Anyone who has read the public code could sign in as the owner. "
+                "Create one with: python3 -c \"import secrets; print(secrets.token_urlsafe(48))\""]
+
+    def approval_problems(self) -> list[str]:
+        """Live refunds need a second person. Deskfern asks for a refund; a different signed in account must approve it."""
+        if self.mode is not Mode.LIVE or self.demo_mode or self.payments_adapter == "seed":
+            return []
+        out: list[str] = []
+        if not self.approver_email:
+            out.append("APPROVER_EMAIL is empty. With MODE=live and a real payment system a second person must approve every refund. Set APPROVER_EMAIL and APPROVER_PASSWORD_HASH to a person who is not the owner.")
+        else:
+            if not self.approver_password_hash:
+                out.append("APPROVER_EMAIL is set but APPROVER_PASSWORD_HASH is empty, so the approver could never sign in.")
+            if self.approver_email.strip().lower() == self.owner_email.strip().lower():
+                out.append("APPROVER_EMAIL is the same address as OWNER_EMAIL, so no second person approves refunds. Use a different person.")
+        return out
+
     def runtime_errors(self) -> list[str]:
         out = super().runtime_errors()
+        if not any(p.startswith("SESSION_SECRET") for p in out):  # the base may already say it (1.2.5 and later)
+            out += self.secret_problems()
         if self.mode is Mode.LIVE and not self.demo_mode:
-            out += self.identity_problems() + self.sending_problems()
+            out += self.identity_problems() + self.sending_problems() + self.approval_problems()
         return list(dict.fromkeys(out))
 
     def due_at(self, created, urgency: str):
@@ -148,7 +176,7 @@ class Settings(BaseAppSettings):
         if self.demo_mode and self.owner_password_hash:
             out.append("DEMO_MODE is true but an owner password is set. The public demo password is switched off; set DEMO_MODE=false for a real install.")
         if not self.demo_mode:
-            out += [p for p in self.identity_problems() + self.sending_problems() if p not in out]
+            out += [p for p in self.identity_problems() + self.sending_problems() + self.approval_problems() if p not in out]
         if self.business_hours_end <= self.business_hours_start:
             out.append("BUSINESS_HOURS_END must be later than BUSINESS_HOURS_START.")
         try:

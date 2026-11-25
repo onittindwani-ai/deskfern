@@ -54,6 +54,13 @@ def decide_approval(approval_id: int, body: DecideIn, s: Session = Depends(db), 
     return {"status": a.status, "refund": refund}
 
 
+@router.post("/actions/pay-approved", summary="Pay the refunds that were approved while draft mode or Pause all was on. Nothing is paid while either is still on.")
+def pay_approved(s: Session = Depends(db), ctx: Ctx = Depends(get_ctx), u: dict = Depends(writer)):
+    out = policies.run_approved_refunds(s, ctx, u["user"])
+    record_audit(s, u["user"], "refund.pay_approved", None, {k: out[k] for k in ("waiting", "paid", "failed")})
+    return out
+
+
 @router.get("/audit", summary="Audit log, newest first")
 def audit(limit: int = Query(100, ge=1, le=1000), s: Session = Depends(db)):
     return [{"id": e.id, "actor": e.actor, "action": e.action, "target": e.target, "detail": e.detail, "at": e.created_at} for e in s.scalars(select(AuditEntry).order_by(AuditEntry.id.desc()).limit(limit))]

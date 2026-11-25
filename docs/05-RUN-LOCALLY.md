@@ -23,14 +23,14 @@
 Run each in its own terminal, from the project folder.
 
 1. **API:** `.venv/bin/python -m uvicorn deskfern.api.app:app_from_env --factory --port 8000 --proxy-headers`
-2. **Worker** (reads the mailbox, runs sync and reply jobs): `.venv/bin/python -m deskfern.worker`
+2. **Worker** (reads the mailbox, drafts tickets, crawls websites you add, pays approved refunds that were held back): `.venv/bin/python -m deskfern.worker`
 3. **Web:** `pnpm --filter web start` after `pnpm build`, or `pnpm dev` while you change code.
 
 Open http://localhost:3000.
 
 ## Tests
 
-- Python: `.venv/bin/python -m pytest`. The last full run is in `data/counts.json`: <!--n:tests.passed-->246<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped (it needs a Postgres, set `TEST_POSTGRES_URL`), coverage <!--n:tests.coverage_percent-->93.3<!--/n--> percent of the `deskfern` package.
+- Python: `.venv/bin/python -m pytest`. The last full run is in `data/counts.json`: <!--n:tests.passed-->333<!--/n--> passed, <!--n:tests.skipped-->2<!--/n--> skipped (it needs a Postgres, set `TEST_POSTGRES_URL`), coverage <!--n:tests.coverage_percent-->93.7<!--/n--> percent of the `deskfern` package.
 - Seed check: `.venv/bin/python tools/score_seed.py` prints one line per planted problem.
 - Answer eval: `.venv/bin/python tools/eval_heldout.py` and `tools/eval_grounding.py` (see `ANSWER-EVAL.md`).
 - Browser tests: `pnpm e2e` (needs Google Chrome; it starts its own API and web server and a throwaway database). It tests the last build, so run `pnpm build` first. <!--n:e2e.tests-->38<!--/n--> tests.

@@ -6,16 +6,23 @@ import { ListSkeleton, LoadError, PageHead } from "@/components/Parts";
 import { get, post } from "@/lib/api";
 import { useMe, useRole } from "@/lib/hooks";
 import { riskLabel } from "@/lib/labels";
-import type { ApprovalRow } from "@/lib/types";
+import type { ActionRow, ApprovalRow } from "@/lib/types";
 
 export default function ApprovalsPage() {
   const qc = useQueryClient();
   const { canWrite } = useRole();
   const me = useMe();
   const q = useQuery({ queryKey: ["approvals"], queryFn: () => get<ApprovalRow[]>("/approvals") });
+  const actions = useQuery({ queryKey: ["actions"], queryFn: () => get<ActionRow[]>("/actions") });
+  const held = (actions.data ?? []).filter((a) => a.status === "recorded_draft").length;
+  const payHeld = useMutation({
+    mutationFn: () => post<{ waiting: number; paid: number; failed: number; blocked: string | null }>("/actions/pay-approved"),
+    onSuccess: (r) => { r.blocked ? notify.info(`Nothing was paid. ${r.blocked} Turn it off first.`) : r.failed ? notify.error("Some refunds could not be paid", `${r.paid} paid, ${r.failed} will be tried again.`) : notify.success(`${r.paid} approved ${r.paid === 1 ? "refund was" : "refunds were"} paid.`); qc.invalidateQueries(); },
+    onError: (e: Error) => notify.error("Could not pay the approved refunds", e.message),
+  });
   const decide = useMutation({
     mutationFn: (v: { id: number; approve: boolean }) => post<{ status: string; refund: string | null }>(`/approvals/${v.id}/decide`, { approve: v.approve, note: "" }),
-    onSuccess: (r, v) => { notify.success(!v.approve ? "Rejected. No refund will be made." : r.refund === "executed" ? "Approved. The refund was sent." : r.refund === "recorded_draft" ? "Approved. Nothing was paid: draft mode or the kill switch is on, so the refund was only recorded." : "Approved."); qc.invalidateQueries(); },
+    onSuccess: (r, v) => { notify.success(!v.approve ? "Rejected. No refund will be made." : r.refund === "executed" ? "Approved. The refund was sent." : r.refund === "recorded_draft" ? "Approved. Nothing was paid yet: draft mode or the kill switch is on. It is paid once both are off." : "Approved."); qc.invalidateQueries(); },
     onError: (e: Error) => notify.error("Could not decide", e.message),
   });
   if (q.isError) return <div className="lh-page"><PageHead title="Approvals" /><LoadError error={q.error} onRetry={() => q.refetch()} what="approvals" /></div>;
@@ -31,6 +38,7 @@ export default function ApprovalsPage() {
             <span><strong>{a.summary}</strong> <Badge tone={a.risk === "high" ? "danger" : "warning"}>{riskLabel(a.risk)}</Badge><br /><span className="lh-mini" style={{ fontSize: "var(--sx-text-caption)", color: "var(--sx-ink-2)" }}>Asked by {a.requested_by} on {a.created_at.slice(0, 10)}{a.payload?.ticket_id ? <> , <Link href={`/tickets/${String(a.payload.ticket_id)}`}>open the ticket</Link></> : null}</span></span>
             <span className="sx-row"><Button size="sm" variant="primary" disabled={!canWrite || a.requested_by === me.data?.user} disabledReason={!canWrite ? "Viewers cannot decide" : "You asked for this one, so someone else must decide it"} onClick={async () => { await decide.mutateAsync({ id: a.id, approve: true }); }}>Approve</Button><Button size="sm" disabled={!canWrite || a.requested_by === me.data?.user} disabledReason={!canWrite ? "Viewers cannot decide" : "You asked for this one, so someone else must decide it"} onClick={async () => { await decide.mutateAsync({ id: a.id, approve: false }); }}>Reject</Button></span>
           </div>))}</div>)}</Card>
+      {held > 0 ? <Card title={`Approved, not paid yet (${held})`}><p className="lh-mini">{held} approved {held === 1 ? "refund is" : "refunds are"} waiting because draft mode or Pause all was on when {held === 1 ? "it was" : "they were"} approved. They are paid by themselves once both are off, or you can press the button.</p><Button size="sm" disabled={!canWrite} disabledReason="Viewers cannot pay refunds" onClick={async () => { await payHeld.mutateAsync(); }}>Pay approved refunds now</Button></Card> : null}
       <Card title="Decided">{past.length === 0 ? <EmptyState title="No history yet" body="Decisions appear here." /> : <div className="lh-stack">{past.map((a) => <div key={a.id} className="lh-field" style={{ gridTemplateColumns: "1fr auto" }}><span>{a.summary}</span><Badge tone={a.status === "approved" ? "success" : "neutral"}>{a.status === "approved" ? "Approved" : a.status === "rejected" ? "Rejected" : a.status} by {a.decided_by}</Badge></div>)}</div>}</Card>
     </div>
   );

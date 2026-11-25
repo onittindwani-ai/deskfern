@@ -15,6 +15,18 @@ test("dot segments and encoded tricks are refused", () => {
   }
 });
 
+test("a segment with a query mark, fragment, semicolon or other reserved character is refused, so auth/login cannot be reached in disguise", () => {
+  for (const bad of [["auth", "login?"], ["auth", "login?x=1"], ["auth", "login#"], ["auth", "login;"], ["auth", "login;x"], ["auth", "login%3F"], ["auth", "login%2e"], ["auth", "login "], ["auth", "login\\"], ["auth", "log\u00efn"], ["auth", "login\t"], ["tickets", "1?x"], ["tickets", "1&x"], ["tickets", "a,b"], ["tickets", "a:b"], ["tickets", "a@b"], ["tickets", "a=b"]]) {
+    assert.equal(safePath(bad), null, JSON.stringify(bad));
+  }
+});
+
+test("every path the web app really uses still passes", () => {
+  for (const ok of [["tickets", "12"], ["tickets", "12", "reply", "resolve"], ["knowledge", "crawl", "3"], ["policies", "refund", "simulate"], ["actions", "pay-approved"], ["insights", "explain"], ["audit", "verify"], ["approvals", "3", "decide"], ["a.b_c~d-e"]]) {
+    assert.equal(safePath(ok), ok.join("/"), ok.join("/"));
+  }
+});
+
 test("a declared length over the limit is refused before reading", () => {
   assert.equal(bodyAllowed(null, 10), true);
   assert.equal(bodyAllowed("10", 10), true);

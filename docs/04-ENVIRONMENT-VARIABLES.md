@@ -7,7 +7,7 @@ Where to put them: **local** in a `.env` file at the repo root (copied from `.en
 ## SESSION_SECRET
 
 - Required: required
-- What it does: Signs the login cookie. A long random string only you know, 32 or more characters. The app refuses to start on the placeholder from `.env.example`, on a short value, or on an empty one, unless DEMO_MODE is on and no owner password is set.
+- What it does: Signs the login cookie. A long random string only you know, 32 or more characters. The app and the worker refuse to start on the placeholder from `.env.example` or on a short value (under 32 characters) whenever DEMO_MODE is off, an owner password (OWNER_PASSWORD_HASH) is set, or MODE is live. The only start that keeps the example value is the offline demo with no owner password and MODE draft, because nothing real is behind it. With the example value anyone who has read the public code can make a session token and sign in as the owner.
 - How to get it:
   1. Run `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`.
   2. Paste the result as the value.
@@ -76,8 +76,8 @@ Where to put them: **local** in a `.env` file at the repo root (copied from `.en
 
 ## APPROVER_EMAIL / APPROVER_PASSWORD_HASH
 
-- Required: optional, but needed to approve refunds you asked for
-- What it does: A second login that can approve refunds. The person who asks cannot approve their own request.
+- Required: optional in draft mode; required when MODE is live and PAYMENTS_ADAPTER is not seed (the app then refuses to start without it, and without its hash, or if it is the owner's own address)
+- What it does: A second login that can approve refunds. The person who asks cannot approve their own request. A refund that someone asked for by hand, or by pressing Draft again or Confirm sender, is asked in that person's name, so they cannot decide it. A refund the worker asks for by itself is asked in Deskfern's own name, so the owner or the approver can decide it; the second login is what makes sure a person other than the owner exists.
 - How to get it:
   1. Make a hash the same way as the owner.
   2. Give the approver their own password.
@@ -175,12 +175,12 @@ Where to put them: **local** in a `.env` file at the repo root (copied from `.en
 - Cost: Free.
 - Local, Vercel, Railway, Hetzner: see the paragraph at the top. The web host does not need it.
 - Check it: `python3 tools/doctor.py`.
-- If it is wrong: Sign in answers "too many tries" sooner than expected.
+- If it is wrong: Sign in answers "too many tries" sooner than expected. Three limits apply: one address, one address and one account (this burst), and one account from anywhere (failed tries only, a burst of 20 or four times this number, one more every 30 seconds). An address that signed in as that account in the last 24 hours is never held up by the account wide limit, so someone who only knows the owner's email cannot keep the owner out. A first sign in from a new address can wait while an attack on the account runs.
 
-## CRAWL_MAX_PAGES, CRAWL_MAX_DEPTH, CRAWL_MAX_BYTES, CRAWL_DELAY_S
+## CRAWL_MAX_PAGES, CRAWL_MAX_DEPTH, CRAWL_MAX_BYTES, CRAWL_DELAY_S, CRAWL_DEADLINE_S, CRAWL_TOTAL_BYTES
 
 - Required: optional
-- What it does: Limits for the site crawl.
+- What it does: Limits for the site crawl. CRAWL_MAX_BYTES is the most one page may have, CRAWL_TOTAL_BYTES (default 10000000) the most the whole crawl may read, CRAWL_DEADLINE_S (default 120) the most seconds the whole crawl may take, and CRAWL_DELAY_S (0 to 10 seconds) the pause between two pages. A site's own Crawl-delay can lengthen the pause, never beyond 10 seconds. One page may take at most 30 seconds to arrive. A real site is crawled by the worker (`make worker`), so the worker must be running; only the offline sample site is read on the spot.
 - How to get it:
   1. Keep the defaults for a small help site.
   2. Raise them slowly.

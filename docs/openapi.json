@@ -211,6 +211,7 @@
       "required": false,
       "schema": {
        "type": "string",
+       "maxLength": 200,
        "default": "",
        "title": "Q"
       }
@@ -569,6 +570,56 @@
     }
    }
   },
+  "/api/tickets/{tid}/reply/resolve": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Say whether a reply whose send was never confirmed reached the customer",
+    "operationId": "resolve_reply_api_tickets__tid__reply_resolve_post",
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ResolveIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/tickets/{tid}/confirm-sender": {
    "post": {
     "tags": [
@@ -822,7 +873,7 @@
     "tags": [
      "write"
     ],
-    "summary": "Add a source. A site starts a crawl.",
+    "summary": "Add a source. A site starts a crawl: the worker runs it, and its progress is shown at /knowledge/crawl/{id}.",
     "operationId": "add_source_api_knowledge_sources_post",
     "requestBody": {
      "content": {
@@ -1185,6 +1236,25 @@
         "schema": {
          "$ref": "#/components/schemas/HTTPValidationError"
         }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/actions/pay-approved": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Pay the refunds that were approved while draft mode or Pause all was on. Nothing is paid while either is still on.",
+    "operationId": "pay_approved_api_actions_pay_approved_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
        }
       }
      }
@@ -1656,6 +1726,19 @@
      "text"
     ],
     "title": "ReplyIn"
+   },
+   "ResolveIn": {
+    "properties": {
+     "delivered": {
+      "type": "boolean",
+      "title": "Delivered"
+     }
+    },
+    "type": "object",
+    "required": [
+     "delivered"
+    ],
+    "title": "ResolveIn"
    },
    "RuleIn": {
     "properties": {

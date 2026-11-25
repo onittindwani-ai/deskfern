@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from deskfern import crawler as crawl_mod
-from deskfern import desk, importing, ingest, insights, netguard, policies, search
+from deskfern import crawljobs, desk, importing, ingest, insights, netguard, policies, search
 from deskfern.api.deps import db, get_ctx, owner, user, writer
+from deskfern.adapters.base import DeliveryUnknown
 from deskfern.chunking import ParsedDoc
 from deskfern.context import Ctx
 from deskfern.models import CrawlJob, Escalation, Gap, PolicyAction, Source, TestCase, Ticket
@@ -36,10 +36,24 @@ def reply(tid: int, b: ReplyIn, s: Session = Depends(db), ctx: Ctx = Depends(get
         return desk.send_reply(s, ctx, _ticket(s, tid), b.text, u["user"])
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
-    except desk.AlreadyAnswered as exc:
+    except (desk.AlreadyAnswered, desk.ReplyInDoubt) as exc:
         raise HTTPException(409, str(exc)) from exc
-    except AdapterError as exc:  # the channel failed: nothing was recorded, the ticket stays open and the reply can be tried again
+    except DeliveryUnknown as exc:  # it may have been delivered: the answer is marked as being sent, and a person says whether the customer got it
+        raise HTTPException(502, f"We could not tell whether the reply was delivered. {exc} The ticket now waits for you: check the helpdesk or the mailbox, then press It was delivered or It was not delivered.") from exc
+    except AdapterError as exc:  # the channel failed before anything was sent: nothing was recorded, the ticket stays open and the reply can be tried again
         raise HTTPException(502, f"The reply was not sent. {exc}") from exc
+
+
+class ResolveIn(BaseModel):
+    delivered: bool
+
+
+@router.post("/tickets/{tid}/reply/resolve", summary="Say whether a reply whose send was never confirmed reached the customer")
+def resolve_reply(tid: int, b: ResolveIn, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx), u: dict = Depends(writer)):
+    try:
+        return desk.resolve_reply(s, ctx, _ticket(s, tid), b.delivered, u["user"])
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @router.post("/tickets/{tid}/confirm-sender", summary="A person has checked who the sender is. The customer record is matched, then the draft can use the account.")
@@ -56,7 +70,7 @@ def redraft(tid: int, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx), u: 
     for e in s.scalars(select(Escalation).where(Escalation.ticket_id == tid)):
         s.delete(e)
     s.flush()
-    desk.process_ticket(s, ctx, t)
+    desk.process_ticket(s, ctx, t, actor=u["user"])  # a refund this draft asks for is requested in this person's name, so they cannot approve it
     record_audit(s, u["user"], "ticket.redraft", f"ticket:{tid}", {})
     return {"outcome": t.outcome}
 
@@ -137,36 +151,7 @@ class SourceIn(BaseModel):
     uri: str = Field(default="", max_length=500)
 
 
-def run_crawl(s: Session, ctx: Ctx, job: CrawlJob) -> None:
-    src = s.get(Source, job.source_id)
-    job.status = "running"
-    st = ctx.settings
-    try:
-        if src.uri.startswith("demo://"):
-            if not st.demo_shortcuts:
-                raise netguard.UnsafeURL("The sample site (demo://) only works in the demo. Enter the address of your own help site.")
-            from fastapi.testclient import TestClient
-
-            from mock.source_mocks import SiteMock
-
-            c = crawl_mod.Crawler(client=TestClient(SiteMock().app, base_url="http://help.example.test"), resolver=lambda h, p: ["93.184.216.34"], sleep=lambda x: None, max_pages=st.crawl_max_pages, max_depth=st.crawl_max_depth, max_bytes=st.crawl_max_bytes)
-            start = "http://help.example.test/"
-        elif st.demo_mode:
-            raise netguard.UnsafeURL("Demo mode is offline. Use the sample site address demo://sample-help-site, or paste text.")
-        else:
-            c = crawl_mod.Crawler(max_pages=st.crawl_max_pages, max_depth=st.crawl_max_depth, max_bytes=st.crawl_max_bytes, delay_s=st.crawl_delay_s)
-            start = src.uri
-        res = ingest.crawl_into_source(s, src, c, start, ctx.today(s))
-        job.fetched, job.skipped, job.log, job.status = res["pages"], len(res["skipped"]), [f"{u}: {why}" for u, why in res["skipped"]][:50], "done"
-        src.status, src.error, src.last_synced_at = "ready", "", ctx.now(s)
-    except Exception as exc:  # a failed crawl is shown, never a crash. Our own refusals are shown in words; anything else only by its type, as it may hold page text
-        why = str(exc)[:300] if isinstance(exc, netguard.UnsafeURL) else f"The crawl failed ({type(exc).__name__}). Check the address and try again."
-        job.status, job.log = "failed", [why]
-        src.status, src.error = "error", why
-    job.finished_at = ctx.now(s)
-
-
-@router.post("/knowledge/sources", summary="Add a source. A site starts a crawl.")
+@router.post("/knowledge/sources", summary="Add a source. A site starts a crawl: the worker runs it, and its progress is shown at /knowledge/crawl/{id}.")
 def add_source(b: SourceIn, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx), u: dict = Depends(writer)):
     if b.kind == "site" and b.uri.startswith("demo://") and not ctx.settings.demo_shortcuts:
         raise HTTPException(422, "The sample site (demo://) only works in the demo. Enter the address of your own help site.")
@@ -182,10 +167,7 @@ def add_source(b: SourceIn, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx
     s.flush()
     job = None
     if b.kind == "site":
-        job = CrawlJob(source_id=src.id, status="queued")
-        s.add(job)
-        s.flush()
-        run_crawl(s, ctx, job)
+        job = crawljobs.start(s, ctx, src)  # a real site is queued for the worker; the offline sample site runs at once
     else:
         src.status, src.error = "error", "Connect it first: set the token in your environment (docs/03), then sync."
     record_audit(s, u["user"], "knowledge.source.add", f"source:{src.id}", {"kind": b.kind})

@@ -4,7 +4,7 @@ import json
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from deskfern import insights, policies
@@ -27,16 +27,17 @@ def overview(s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
 
 
 @router.get("/tickets", summary="The queue with SLA timers")
-def tickets(status: str = "", q: str = "", limit: int = Query(300, ge=1, le=5000), s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
+def tickets(status: str = "", q: str = Query("", max_length=200), limit: int = Query(300, ge=1, le=5000), s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
     now = ctx.now(s)
-    stmt = select(Ticket).order_by(Ticket.created_at.desc()).limit(limit)
+    stmt = select(Ticket).outerjoin(Customer, Ticket.customer_id == Customer.id).order_by(Ticket.created_at.desc()).limit(limit)
+    if q.strip():  # the search runs in the database BEFORE the row limit, so an old ticket is found even when the newest `limit` rows do not hold it
+        like = "%" + q.strip().lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        stmt = stmt.where(or_(func.lower(Ticket.subject).like(like, escape="\\"), func.lower(func.coalesce(Customer.name, Ticket.requester_email)).like(like, escape="\\")))
     if status == "open":
         stmt = stmt.where(Ticket.status.in_(["new", "drafted", "awaiting_approval", "escalated"]))
     elif status:
         stmt = stmt.where(Ticket.status == status)
     rows = [ticket_row(t, now) for t in s.scalars(stmt)]
-    if q:
-        rows = [r for r in rows if q.lower() in f"{r['subject']} {r['customer']}".lower()]
     rows.sort(key=lambda r: (r["minutes_left"] is None, r["minutes_left"] if r["minutes_left"] is not None else 0))
     return rows
 

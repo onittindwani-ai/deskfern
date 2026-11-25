@@ -13,6 +13,7 @@ from deskfern.config import Settings
 from deskfern.context import Ctx
 from deskfern.datadir import REPO_DATA
 from deskfern.dbsetup import make_private_engine
+from deskfern.loginguard import LoginGuard
 from sendora_core.app import SESSION_COOKIE, create_base_app
 from sendora_core.auth import read_session_token
 from sendora_core.db import Base, make_session_factory
@@ -57,13 +58,7 @@ def create_app(settings: Settings | None = None, ctx: Ctx | None = None) -> Fast
     app.title, app.version = "Deskfern API", "1.0.1"
     app.state.ctx = ctx
     app.state.limiter = TokenBucket(capacity=600, refill_per_sec=20.0)
-    # Sign in attempts per address and email: a burst of LOGIN_BURST (default 5), then one more every 12 seconds.
-    app.state.login_bucket = TokenBucket(capacity=ctx.settings.login_burst, refill_per_sec=1 / 12)
-    # And a wider limit per address alone, so changing the email in every try does not give a fresh set of tries.
-    app.state.login_ip_bucket = TokenBucket(capacity=max(30, ctx.settings.login_burst * 6), refill_per_sec=1 / 3)
-    # And one per account whatever the address, so guesses spread over many addresses still run out. It is generous and refills every 30 seconds,
-    # so the owner is held up for at most a short while by someone hammering the account, never locked out.
-    app.state.login_account_bucket = TokenBucket(capacity=max(20, ctx.settings.login_burst * 4), refill_per_sec=1 / 30)
+    app.state.login_guard = LoginGuard(ctx.settings.login_burst)  # per address, per address and account, and per account (failures only); see loginguard.py
 
     @app.middleware("http")
     async def require_session(request: Request, call_next):

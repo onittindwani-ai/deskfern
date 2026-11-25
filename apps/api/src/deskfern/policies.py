@@ -2,6 +2,8 @@
 
 The rule is data (a PolicyRule row), the decision is plain code, and nothing here can pay anyone: `request_refund` only asks for an approval.
 `execute_refund` runs only for an approved request, goes through the payments adapter (blocked in draft mode and by the kill switch) and is safe to call twice.
+An approved refund that was blocked (draft mode, Pause all) is kept as `recorded_draft`: approved, not paid yet. `run_approved_refunds` pays those
+once the block is lifted; the worker runs it every minute and the Approvals page has a button for it.
 """
 
 from __future__ import annotations
@@ -9,14 +11,20 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
-from sqlalchemy import select
+import logging
+
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from deskfern.adapters.base import with_settings
-from deskfern.models import Customer, PolicyAction, PolicyRule, Ticket
+from deskfern.models import Customer, Message, PolicyAction, PolicyRule, Ticket
+from sendora_core.adapters import AdapterError
 from sendora_core.approvals import ApprovalError, request_approval, require_approved
 from sendora_core.audit import record_audit
 from sendora_core.safety import DraftModeError, KillSwitchError
+from sendora_core.settings import Mode
+
+log = logging.getLogger("deskfern.policies")
 
 DEFAULT_REFUND = {"monthly_days": 7, "annual_days": 14, "max_per_12m": 1, "always_full": ["duplicate_charge", "charged_after_cancel"]}  # decided defaults (docs 04 and 14), the implementer changes them per client
 FLAG_TEXT = {"duplicate_charge": "a duplicate charge", "charged_after_cancel": "a charge after a confirmed cancellation"}
@@ -79,7 +87,10 @@ def simulate(session: Session, rule: dict, today: date) -> list[dict]:
     return out
 
 
-ACTIVE_REFUND = ["requested", "approved", "recorded_draft", "executed"]
+# recorded_draft stays in this list on purpose: it is approved money that has not left yet, and a second request for the same payment must never be possible.
+ACTIVE_REFUND = ["requested", "approved", "recorded_draft", "executing", "executed"]
+STATE_WORDS = {"requested": "waiting for a person to approve it", "approved": "approved and waiting to be paid", "recorded_draft": "approved but not paid yet, because draft mode or Pause all is on; it is paid when that is turned off",
+               "executing": "being paid right now", "executed": "paid"}
 
 
 def refund_elsewhere(session: Session, ticket: Ticket) -> PolicyAction | None:
@@ -108,21 +119,74 @@ def request_refund(session: Session, ticket: Ticket, decision: RefundDecision, r
     return act
 
 
-def execute_refund(session: Session, ctx, action_id: int) -> PolicyAction:
-    """Run an approved refund. In draft mode the intent is recorded and nothing is sent. Calling it twice never pays twice."""
+def describe_state(act: PolicyAction) -> str:
+    return STATE_WORDS.get(act.status, act.status)
+
+
+def execute_refund(session: Session, ctx, action_id: int, actor: str = "deskfern") -> PolicyAction:
+    """Run an approved refund. In draft mode the intent is recorded and nothing is sent. Calling it twice never pays twice.
+
+    The request is claimed first with one conditional update (status becomes `executing`), so two callers at the same moment, the worker and a button for
+    example, cannot both pay. The payment system's idempotency key is the second guard. If the payment system cannot be used the claim is undone and the error is raised."""
     act = session.get(PolicyAction, action_id)
     if act is None:
         raise ApprovalError("Unknown refund request.")
     if act.status == "executed":
         return act
     require_approved(session, act.approval_id or -1, "refund.execute")
+    before = act.status
+    claim = session.execute(update(PolicyAction).where(PolicyAction.id == action_id, PolicyAction.status.in_(["requested", "approved", "recorded_draft"])).values(status="executing").execution_options(synchronize_session=False))
+    session.refresh(act)
+    if claim.rowcount != 1:
+        if act.status == "executed":
+            return act
+        raise ApprovalError("This refund is being paid by someone else right now. Look again in a moment.")
     adapter = with_settings(ctx.adapters.payments, ctx.effective(session))  # a copy: the shared adapter is never changed
     try:
         ref = adapter.refund(charge_id=act.charge_id, amount_minor=act.amount_minor, reason="requested_by_customer", idempotency_key=f"deskfern-refund-{act.id}", metadata={"ticket": str(act.ticket_id)})
         act.status, act.external_id = "executed", ref
-        record_audit(session, "deskfern", "refund.executed", f"policy_action:{act.id}", {"amount_minor": act.amount_minor})
+        record_audit(session, actor, "refund.executed", f"policy_action:{act.id}", {"amount_minor": act.amount_minor})
     except (DraftModeError, KillSwitchError) as exc:
         act.status = "recorded_draft"
-        record_audit(session, "deskfern", "refund.recorded_only", f"policy_action:{act.id}", {"why": str(exc)[:120]})
+        if before != "recorded_draft":  # said once, not every minute while the block stays on
+            record_audit(session, actor, "refund.recorded_only", f"policy_action:{act.id}", {"why": str(exc)[:120]})
+    except AdapterError:
+        act.status = before
+        session.flush()
+        raise
     session.flush()
     return act
+
+
+def blocked_reason(ctx, session: Session) -> str | None:
+    """Why no refund can leave right now, in words, or None when none is blocked. Read from the settings as changed in the app, not only the environment."""
+    eff = ctx.effective(session)
+    if eff.kill_switch:
+        return "Pause all (the kill switch) is on."
+    if eff.mode is not Mode.LIVE:
+        return "Draft mode is on, so nothing is paid."
+    return None
+
+
+def run_approved_refunds(session: Session, ctx, actor: str = "deskfern") -> dict:
+    """Pay every approved refund that was held back. Safe to run at any time and as often as you like: nothing is paid while draft mode or Pause all is on,
+    a refund that is already paid is never paid again, and a payment system that fails leaves the refund waiting for the next run."""
+    waiting = list(session.scalars(select(PolicyAction).where(PolicyAction.status == "recorded_draft").order_by(PolicyAction.id)))
+    out = {"waiting": len(waiting), "paid": 0, "failed": 0, "blocked": None}
+    why = blocked_reason(ctx, session) if waiting else None
+    if why:
+        return {**out, "blocked": why}
+    for act in waiting:
+        try:
+            with session.begin_nested():
+                done = execute_refund(session, ctx, act.id, actor)
+                record_audit(session, actor, "refund.retry", f"policy_action:{act.id}", {"result": done.status})
+                if done.status == "executed":
+                    session.add(Message(ticket_id=act.ticket_id, direction="note", author="deskfern", body=f"The approved refund of {act.amount_minor / 100:.2f} {act.currency} was paid.", created_at=ctx.now(session)))
+        except (AdapterError, ApprovalError) as exc:
+            out["failed"] += 1
+            log.warning("could not pay approved refund %s: %s", act.id, type(exc).__name__)
+            continue
+        out["paid"] += 1 if done.status == "executed" else 0
+    out["waiting"] = out["waiting"] - out["paid"]
+    return out

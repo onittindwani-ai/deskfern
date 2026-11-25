@@ -13,6 +13,7 @@ export interface TicketDetail extends TicketRow {
   messages: { id: number; direction: string; author: string; body: string; at: string }[]; answer: AnswerRow | null; escalations: { id: number; reason: string; owner: string; status: string }[];
   actions: { id: number; kind: string; amount_minor: number; currency: string; status: string; approval_id: number | null; rationale: Record<string, unknown> }[]; duplicate_of: number | null; duplicate_of_external: string | null;
 }
+export interface ActionRow { id: number; ticket_id: number; kind: string; amount_minor: number; status: string; approval_id: number | null }
 export interface Knowledge { sources: { id: number; kind: string; name: string; uri: string; status: string; last_synced_at: string | null; error: string; documents: number }[]; documents: { id: number; title: string; slug: string; kind: string; source_id: number; updated_on: string | null; outdated: boolean; chunks: number; words: number }[]; chunks: number; coverage_pct: number; outdated: number }
 export interface Gap { id: number; label: string; count: number; samples: string[]; ticket_ids: number[]; status: string }
 export interface RefundRule { monthly_days: number; annual_days: number; max_per_12m: number; always_full: string[] }

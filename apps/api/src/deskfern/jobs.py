@@ -1,16 +1,16 @@
-"""Background jobs: bring in tickets and draft, refresh gaps and health scores."""
+"""Background jobs: bring in tickets and draft, refresh gaps and health scores, pay approved refunds that were held back."""
 
 from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from deskfern import desk, insights
+from deskfern import crawljobs, desk, insights, policies
 from deskfern.context import Ctx
 from sendora_core.events import record_event
 from sendora_core.jobs import Handler, enqueue
 
-INTERVALS = {"intake": 60, "insights": 600}
+INTERVALS = {"intake": 60, "insights": 600, "refunds": 60}
 
 
 def job_intake(session: Session, ctx: Ctx) -> dict:
@@ -23,7 +23,12 @@ def job_insights(session: Session, ctx: Ctx) -> dict:
     return {"gaps": insights.detect_gaps(session), "health": insights.recompute_health(session, ctx.now(session))}
 
 
-JOBS = {"intake": job_intake, "insights": job_insights}
+def job_refunds(session: Session, ctx: Ctx) -> dict:
+    """Pay approved refunds that were held back by draft mode or Pause all, as soon as neither is on (read from the app's own settings)."""
+    return policies.run_approved_refunds(session, ctx)
+
+
+JOBS = {"intake": job_intake, "insights": job_insights, "refunds": job_refunds}
 
 
 def _run(fn, ctx: Ctx) -> Handler:
@@ -40,7 +45,9 @@ def _run(fn, ctx: Ctx) -> Handler:
 
 
 def make_handlers(ctx: Ctx) -> dict[str, Handler]:
-    return {kind: _run(fn, ctx) for kind, fn in JOBS.items()}
+    handlers = {kind: _run(fn, ctx) for kind, fn in JOBS.items()}
+    handlers["crawl"] = lambda session, payload: crawljobs.job_crawl(session, ctx, payload)  # queued by the Knowledge page, not on a timer
+    return handlers
 
 
 def schedule_due(session: Session, ctx: Ctx) -> int:

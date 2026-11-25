@@ -38,10 +38,9 @@ def _accounts(ctx: Ctx) -> dict[str, tuple[str | None, str]]:
 def login(body: Login, request: Request, ctx: Ctx = Depends(get_ctx)):
     email = clean_email(body.email)  # one spelling, used for the throttle keys AND the lookup
     host = request.client.host if request.client else "x"
+    guard = request.app.state.login_guard
     try:
-        request.app.state.login_ip_bucket.check(host)  # every try from one address, whatever email it names
-        request.app.state.login_bucket.check(f"{host}:{email}")  # tries at one account from one address
-        request.app.state.login_account_bucket.check(email)  # tries at one account from anywhere
+        guard.check(host, email)  # per address, per address and account, and per account (failed tries only; an address that signed in as this account lately is not held up by it)
     except RateLimitExceeded as exc:
         raise HTTPException(429, str(exc)) from exc
     acc = _accounts(ctx).get(email)
@@ -51,7 +50,9 @@ def login(body: Login, request: Request, ctx: Ctx = Depends(get_ctx)):
     else:
         ok = verify_password_or_dummy(body.password, pw_hash)  # an unknown account costs the same time as a wrong password
     if not acc or not ok:
+        guard.failed(host, email)
         raise HTTPException(401, "Email or password is wrong.")
+    guard.succeeded(host, email)
     token = make_session_token(ctx.settings.session_secret, email, acc[1])
     return {"token": token, "user": email, "role": acc[1]}
 

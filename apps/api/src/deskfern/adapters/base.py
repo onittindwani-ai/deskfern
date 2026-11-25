@@ -8,10 +8,29 @@ import re
 import socket
 from dataclasses import dataclass
 from datetime import datetime
+from collections.abc import Callable
 from typing import Protocol
 from urllib.parse import urlparse
 
+import httpx
+
 from sendora_core.adapters import AdapterError
+
+
+class DeliveryUnknown(AdapterError):
+    """A write may have reached the other side: a timeout while waiting for the answer, a connection that dropped after the request went out, or a server error.
+    It is NOT safe to send the same thing again without checking first, because the customer may already have it."""
+
+
+def deliver(call: Callable[[], httpx.Response], what: str) -> httpx.Response:
+    """Run one write request. A failure to connect means nothing was sent (AdapterError, safe to try again); any other transport failure (DeliveryUnknown)
+    means the request may have been processed. A timeout is not a 500: the API answers with a clear message either way."""
+    try:
+        return call()
+    except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout, httpx.UnsupportedProtocol) as exc:
+        raise AdapterError(f"Could not reach {what} ({type(exc).__name__}), so nothing was sent.") from exc
+    except httpx.HTTPError as exc:
+        raise DeliveryUnknown(f"{what} did not confirm the request ({type(exc).__name__}). It may or may not have been delivered.") from exc
 
 
 @dataclass

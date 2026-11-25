@@ -1,6 +1,6 @@
 PY=.venv/bin/python
 
-.PHONY: e2e install test seed-check doctor check-env api worker web demo-note
+.PHONY: e2e install test seed-check doctor check-env api worker web demo-note constraints
 
 install:
 	@if command -v uv >/dev/null 2>&1; then \
@@ -15,6 +15,11 @@ install:
 
 test:
 	$(PY) -m pytest
+	pnpm --filter web test:unit
+
+# Rewrite constraints.txt from the packages installed in .venv (run it after a deliberate upgrade, then run the tests). The three header lines are kept.
+constraints:
+	@{ head -n 3 constraints.txt; if command -v uv >/dev/null 2>&1; then uv pip freeze --python $(PY) --exclude-editable; else $(PY) -m pip freeze --exclude-editable; fi | sort -f; } > constraints.txt.new && mv constraints.txt.new constraints.txt
 
 seed-check:
 	$(PY) tools/score_seed.py

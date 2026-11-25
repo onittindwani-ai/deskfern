@@ -51,7 +51,7 @@ test.describe.serial("the five minute demo", () => {
     await page.locator(".lh-field").filter({ hasText: `ticket ${refund.external_id})` }).getByRole("button", { name: "Approve" }).click();
     await expect(page.getByText("Approved.")).toBeVisible();
     await page.goto(`/tickets/${refund.id}`);
-    await expect(page.getByText(/Paid|Approved, recorded only/).first()).toBeVisible();
+    await expect(page.getByText(/Paid|Approved, not paid yet/).first()).toBeVisible();
 
     // a refund the rule refuses cannot be requested by hand
     const denied = ts.find((t) => t.outcome === "refund_denied")!;

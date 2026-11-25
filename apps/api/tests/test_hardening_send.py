@@ -128,25 +128,23 @@ def test_the_switch_in_the_app_stops_every_write_even_with_mode_live_in_the_envi
     text = {"text": "You can export from the File menu."}
     for switch in ("kill_switch", "force_draft"):
         assert c.post("/api/settings", headers=h, json={switch: True}).status_code == 200
-        assert c.post(f"/api/tickets/{mail_tid}/reply", headers=h, json=text).json()["sent"] is False
-        with ctx.factory() as s:  # reopen the ticket so the next reply is allowed; the point here is the adapters stay untouched
-            s.get(Ticket, mail_tid).status = "drafted"
-            s.commit()
-        assert c.post(f"/api/approvals/{approval_id}/decide", headers=ap, json={"approve": True}).status_code == 200
+        held = c.post(f"/api/tickets/{mail_tid}/reply", headers=h, json=text).json()
+        assert held["sent"] is False and held["held"] is True  # the same reply can be sent again later: no hand editing of the database is needed
         with ctx.factory() as s:
-            action = s.get(PolicyAction, action.id)
-            assert action.status == "recorded_draft"
-            action.status = "requested"  # reset to try the other switch
-            from sendora_core.models import Approval
-
-            s.get(Approval, approval_id).status = "pending"
-            s.commit()
+            t = s.get(Ticket, mail_tid)
+            assert t.status != "answered" and t.first_response_at is None  # nothing left, so the reply clock keeps running
+        if switch == "kill_switch":
+            assert c.post(f"/api/approvals/{approval_id}/decide", headers=ap, json={"approve": True}).status_code == 200
+        out = c.post("/api/actions/pay-approved", headers=ap).json()  # the real way to retry a refund that was approved while a switch was on
+        assert out["paid"] == 0 and out["blocked"]
+        with ctx.factory() as s:
+            assert s.get(PolicyAction, action.id).status == "recorded_draft"
         assert ctx.adapters.email.sent == [] and ctx.adapters.helpdesk.sent == [] and ctx.adapters.payments.refunds == []
         assert c.post("/api/settings", headers=h, json={switch: False}).status_code == 200
     # both switches off: the very same actions now write, so the checks above proved something
     assert c.post(f"/api/tickets/{mail_tid}/reply", headers=h, json=text).json()["sent"] is True
     assert c.post(f"/api/tickets/{hd_tid}/reply", headers=h, json=text).json()["sent"] is True
-    assert c.post(f"/api/approvals/{approval_id}/decide", headers=ap, json={"approve": True}).status_code == 200
+    assert c.post("/api/actions/pay-approved", headers=ap).json()["paid"] == 1
     assert len(ctx.adapters.email.sent) == 1 and len(ctx.adapters.helpdesk.sent) == 1 and ctx.adapters.payments.refunds == [("ch_test_99", 800)]
     assert refund_tid
 

@@ -4,13 +4,17 @@ const BLOCKED_FIRST = new Set(["webhooks", "tools"]); // the signed webhooks go 
 const MAX_BODY_LOGIN = 8 * 1024; // a sign in is a few hundred bytes
 const MAX_BODY_API = 2 * 1024 * 1024; // the largest legitimate request is a pasted help page (200,000 characters) or a customers file
 
-/** The path segments to forward, or null when the request must be refused. A segment that is "." or "..", or holds a slash, a backslash or a percent sign
- *  (so it could be decoded into one later), is refused; so is auth/login (signing in goes through /api/session so the token stays out of page scripts),
- *  and anything under webhooks or tools. Matched by whole segment, never by a text prefix. */
+const UNRESERVED = /^[A-Za-z0-9._~-]+$/; // the only characters a path segment may hold: letters, digits, dot, underscore, tilde, dash
+
+/** The path segments to forward, or null when the request must be refused. A segment may hold only unreserved characters (letters, digits, . _ ~ -), so it can
+ *  never carry a query mark, a fragment, a semicolon, a percent sign, a slash or a backslash that the API would read as something else (auth/login%3F would
+ *  otherwise slip past the check below and reach the login route). "." and ".." are refused too, and so is auth/login (signing in goes through /api/session
+ *  so the token stays out of page scripts), and anything under webhooks or tools. Matched by whole segment, never by a text prefix. The query string travels
+ *  separately and is not checked here. */
 export function safePath(segments: string[]): string | null {
   if (!segments.length) return null;
   for (const seg of segments) {
-    if (!seg || seg === "." || seg === ".." || /[\\/%\u0000-\u001f]/.test(seg)) return null;
+    if (!seg || seg === "." || seg === ".." || !UNRESERVED.test(seg)) return null;
   }
   const [first, second] = segments.map((x) => x.toLowerCase());
   if (BLOCKED_FIRST.has(first!) || (first === "auth" && second === "login")) return null;

@@ -3,7 +3,7 @@
 ## Daily
 
 - Open the Queue and clear what is past its reply target.
-- Open Approvals and decide waiting refunds. The person who asked cannot approve.
+- Open Approvals and decide waiting refunds. The person who asked cannot approve. Under Approved, not paid yet are refunds approved while draft mode or Pause all was on; they are paid by the worker once both are off, or press Pay approved refunds now.
 - Skim the Audit log for anything unexpected.
 
 ## Weekly
@@ -14,7 +14,7 @@
 
 ## Stopping fast
 
-Press **Pause all**. It blocks every reply and refund at once. To stop even when the web app is down, set `KILL_SWITCH=true` and restart the API and worker.
+Press **Pause all**. It blocks every reply and refund at once. A reply sent while it is on is held (the ticket stays open and its timer keeps running), and an approved refund waits. To stop even when the web app is down, set `KILL_SWITCH=true` and restart the API and worker.
 
 ## Backups
 

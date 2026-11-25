@@ -6,14 +6,14 @@ export const categoryLabel = (c: string | null | undefined) => (c ? CATEGORY[c] 
 const STATUS: Record<string, string> = { new: "New", drafted: "Drafted", awaiting_approval: "Waiting for approval", escalated: "With a person", answered: "Replied", refused: "Politely refused", duplicate: "Duplicate", closed: "Closed" };
 export const statusLabel = (s: string) => STATUS[s] ?? s.replace(/_/g, " ");
 
-const ACTION_STATUS: Record<string, string> = { requested: "Waiting for approval", approved: "Approved", recorded_draft: "Approved, recorded only (draft mode)", executed: "Paid", rejected: "Rejected" };
+const ACTION_STATUS: Record<string, string> = { requested: "Waiting for approval", approved: "Approved", recorded_draft: "Approved, not paid yet (draft mode or Pause all)", executing: "Being paid", executed: "Paid", rejected: "Rejected" };
 export const actionStatusLabel = (s: string) => ACTION_STATUS[s] ?? s.replace(/_/g, " ");
 
 const AUDIT: Record<string, string> = {
   "approval.requested": "Asked for an approval", "approval.approved": "Approved a request", "approval.rejected": "Rejected a request",
   "knowledge.add": "Added a page", "knowledge.source.add": "Added a knowledge source", "policy.refund.changed": "Changed the refund rule",
-  "refund.executed": "Paid a refund", "refund.recorded_only": "Recorded a refund (nothing paid)", "settings.force_draft": "Changed draft mode", "settings.kill_switch": "Changed the kill switch",
-  "ticket.duplicate": "Marked a ticket as a duplicate", "ticket.escalate": "Handed a ticket to a person", "ticket.redraft": "Drafted a ticket again", "ticket.reply": "Replied to a ticket",
+  "refund.executed": "Paid a refund", "refund.recorded_only": "Held back an approved refund (nothing paid)", "refund.retry": "Tried to pay a held refund", "refund.pay_approved": "Pressed Pay approved refunds", "settings.force_draft": "Changed draft mode", "settings.kill_switch": "Changed the kill switch",
+  "ticket.duplicate": "Marked a ticket as a duplicate", "ticket.escalate": "Handed a ticket to a person", "ticket.redraft": "Drafted a ticket again", "ticket.reply": "Replied to a ticket", "ticket.reply_unconfirmed": "A reply was not confirmed", "ticket.reply_confirmed": "Confirmed a reply was delivered", "ticket.reply_not_delivered": "Confirmed a reply was not delivered",
 };
 export const auditLabel = (a: string) => AUDIT[a] ?? a.replace(/[._]/g, " ");
 

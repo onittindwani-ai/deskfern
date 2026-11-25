@@ -8,11 +8,12 @@ import re
 from datetime import timedelta
 from pathlib import Path
 
-from sqlalchemy import select
+import httpx
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from deskfern import answering, ingest, policies, search, triage
-from deskfern.adapters.base import InboundTicket, with_settings
+from deskfern.adapters.base import DeliveryUnknown, InboundTicket, with_settings
 from deskfern.datadir import REPO_DATA, data_dir
 from deskfern.models import Answer, Citation, Customer, Document, Escalation, Gap, Message, Source, TestCase, Ticket
 from deskfern.util import aware, clean_text, safe_external_id
@@ -25,6 +26,10 @@ log = logging.getLogger("deskfern.desk")
 DEFAULT_DATA = REPO_DATA
 UNVERIFIED_NOTE = "The sender's address could not be verified, so no customer account or payment was looked at. When you have checked who this is, press Confirm sender and draft again."
 UNVERIFIED = "unverified_sender"  # the sender address could not be checked, so no customer is matched and no account facts are used
+
+
+class ReplyInDoubt(Exception):
+    """A send was started and never confirmed (or is running right now). A person must say whether the customer got it before anything is sent again."""
 
 
 class AlreadyAnswered(Exception):
@@ -98,7 +103,18 @@ def _writer_label(ctx, session: Session, writer) -> str:
     return model_tasks.label_of(ctx.llm(session)).replace("offline stand in (rules, not a model)", "offline rules, not a language model") if hasattr(ctx, "llm") else "offline rules, not a language model"
 
 
-def process_ticket(session: Session, ctx, t: Ticket, writer=None) -> Answer | None:
+def _say_duplicate(session: Session, t: Ticket, first: Ticket | None, refund=None) -> None:
+    """A ticket closed as a duplicate says why, and where the refund on the first one stands, so nobody has to guess that nothing is coming."""
+    if first is None:
+        return
+    refund = refund or session.scalar(select(policies.PolicyAction).where(policies.PolicyAction.ticket_id == first.id, policies.PolicyAction.status.in_(policies.ACTIVE_REFUND)))
+    tail = f" The refund for this payment, asked for on that ticket, is {policies.describe_state(refund)}." if refund is not None else ""
+    session.add(Message(ticket_id=t.id, direction="note", author="deskfern", created_at=t.created_at, body=f"Closed as a duplicate of ticket {first.external_id}.{tail}"))
+
+
+def process_ticket(session: Session, ctx, t: Ticket, writer=None, actor: str | None = None) -> Answer | None:
+    """Triage and draft one ticket. `actor` is the signed in person who asked for the draft (Draft again); a refund that comes out of it is requested in their name, so they
+    can never approve it themselves. With no actor (the worker) the request is Deskfern's own."""
     body = t.messages[0].body if t.messages else ""
     text = f"{t.subject}. {body}"
     tri = ctx.assist(session, t.subject, body, triage.triage(t.subject, body, t.requester_email, t.customer.plan if t.customer else "free")) if hasattr(ctx, "assist") else triage.triage(t.subject, body, t.requester_email, t.customer.plan if t.customer else "free")
@@ -110,6 +126,7 @@ def process_ticket(session: Session, ctx, t: Ticket, writer=None) -> Answer | No
         t.status, t.duplicate_of_id, t.outcome = "duplicate", dup.id, "duplicate"
         t.flags = list(t.flags) + ["duplicate"]
         record_audit(session, "deskfern", "ticket.duplicate", f"ticket:{t.id}", {"of": dup.id})
+        _say_duplicate(session, t, dup)
         return None
     d = answering.draft_for(session, ctx, t, tri, writer)
     if d.refund is not None and d.refund.eligible:
@@ -118,6 +135,7 @@ def process_ticket(session: Session, ctx, t: Ticket, writer=None) -> Answer | No
             t.status, t.duplicate_of_id, t.outcome = "duplicate", other.ticket_id, "duplicate"
             t.flags = list(t.flags) + ["duplicate"]
             record_audit(session, "deskfern", "ticket.duplicate", f"ticket:{t.id}", {"of": other.ticket_id, "why": "refund already requested"})
+            _say_duplicate(session, t, session.get(Ticket, other.ticket_id), other)
             return None
     answer_writer_label = _writer_label(ctx, session, writer)
     ans = Answer(ticket_id=t.id, decision={"answer": "answer", "refund_ok": "answer", "refund_denied": "answer", "refuse": "refuse"}.get(d.outcome, "escalate"), text=d.text, sentences=[s.as_dict() for s in d.sentences],
@@ -136,7 +154,7 @@ def process_ticket(session: Session, ctx, t: Ticket, writer=None) -> Answer | No
     if d.escalation_owner:
         session.add(Escalation(ticket_id=t.id, reason=d.reason or "Needs a person.", owner=d.escalation_owner))
     if d.refund is not None and d.refund.eligible:
-        act = policies.request_refund(session, t, d.refund, currency=ctx.settings.currency)
+        act = policies.request_refund(session, t, d.refund, requested_by=actor or "deskfern", currency=ctx.settings.currency)
         if act:
             t.status = "awaiting_approval"
     record_event(session, "ticket.drafted", "ticket", t.id, {"outcome": d.outcome, "confidence": d.confidence})
@@ -185,8 +203,8 @@ def fetch_all(session: Session, ctx) -> dict:
         fn = getattr(source, "fetch_new", None) or getattr(source, "fetch_tickets", None)
         try:
             batch = fn() if fn else []
-        except AdapterError as exc:
-            errors.append(str(exc)[:200])  # one source being down must not stop the other
+        except (AdapterError, httpx.HTTPError) as exc:
+            errors.append(str(exc)[:200] if isinstance(exc, AdapterError) else f"Could not reach {type(source).__name__} ({type(exc).__name__}).")  # one source being down must not stop the other
             continue
         acks: list[str] = []
         for inb in batch:
@@ -259,22 +277,47 @@ def latest_answer(t: Ticket) -> Answer | None:
 
 def _deliver(ctx, t: Ticket, text: str, settings) -> None:
     """Send the reply the way the ticket came in: mail goes back by mail (in the same thread), helpdesk tickets go back through that helpdesk.
-    The adapter is a copy that reads the current settings, so the kill switch and draft mode are checked on every send."""
-    if t.channel == "email":
-        if not t.requester_email:
-            raise AdapterError("This message has no sender address, so there is nobody to send a reply to.")
-        original = t.external_id[3:] if t.external_id.startswith("em-") and not t.external_id.startswith("em-h-") else ""  # a hashed id cannot be turned back into the Message-ID
-        subject = t.subject if t.subject.lower().startswith("re:") else f"Re: {t.subject}"
-        with_settings(ctx.adapters.email, settings).send(from_addr=settings.email_from, to=t.requester_email, subject=subject, body=text, in_reply_to=original)
-    else:
-        with_settings(ctx.adapters.helpdesk, settings).post_reply(t.external_id, text)
+    The adapter is a copy that reads the current settings, so the kill switch and draft mode are checked on every send.
+    Any transport error that gets past the adapter is turned into DeliveryUnknown here, so it can never leave the caller thinking nothing was sent."""
+    try:
+        if t.channel == "email":
+            if not t.requester_email:
+                raise AdapterError("This message has no sender address, so there is nobody to send a reply to.")
+            original = t.external_id[3:] if t.external_id.startswith("em-") and not t.external_id.startswith("em-h-") else ""  # a hashed id cannot be turned back into the Message-ID
+            subject = t.subject if t.subject.lower().startswith("re:") else f"Re: {t.subject}"
+            with_settings(ctx.adapters.email, settings).send(from_addr=settings.email_from, to=t.requester_email, subject=subject, body=text, in_reply_to=original)
+        else:
+            with_settings(ctx.adapters.helpdesk, settings).post_reply(t.external_id, text)
+    except httpx.HTTPError as exc:
+        raise DeliveryUnknown(f"The reply may or may not have been delivered ({type(exc).__name__}).") from exc
+
+
+CLAIMABLE = ("draft", "held", "edited")
+IN_DOUBT = ("A reply to this ticket is being sent, or its send was interrupted before it could be confirmed, so it is not sent again blindly. Check the helpdesk or the mailbox. "
+            "If the customer has the reply, press It was delivered. If not, press It was not delivered and send again.")
+
+
+def _claim(session: Session, ans: Answer, text: str, edited: bool) -> bool:
+    """Take the right to send this answer with one conditional update, so two people (or a double click) cannot both send it. Committed before anything leaves."""
+    values = {"status": "sending", "edited_text": text if edited else ""}
+    res = session.execute(update(Answer).where(Answer.id == ans.id, Answer.status.in_(CLAIMABLE)).values(**values).execution_options(synchronize_session=False))
+    session.refresh(ans)
+    return res.rowcount == 1
+
+
+def _hold_reason(exc: Exception) -> str:
+    return "Pause all (the kill switch) is on" if isinstance(exc, KillSwitchError) else "draft mode is on"
 
 
 def send_reply(session: Session, ctx, t: Ticket, text: str, agent: str) -> dict:
-    """An agent sends the reply (the draft or an edited version). In draft mode the reply is recorded and nothing leaves. An edit becomes a regression test case.
+    """An agent sends the reply (the draft or an edited version). An edit becomes a regression test case.
 
-    A ticket that already has its reply refuses a second one (AlreadyAnswered). If the channel fails (AdapterError) nothing is recorded: the ticket
-    is not marked answered and the reply clock keeps running, because nobody got an answer."""
+    The answer is claimed and the claim committed BEFORE anything leaves, so a crash or a lost connection afterwards can never lead to a blind second send.
+    - Sent: the ticket is answered and the reply clock stops.
+    - Held (draft mode or Pause all): nothing left. The ticket stays open, the reply clock keeps running, and the answer is marked held so it can be sent later.
+    - Failed before sending (AdapterError): the claim is undone and the reply can simply be tried again.
+    - Not confirmed (DeliveryUnknown, or a crash): the answer stays `sending` and a person must say whether the customer got it (`resolve_reply`).
+    A ticket that already has its reply refuses a second one (AlreadyAnswered)."""
     ans = latest_answer(t)
     if ans is None:
         raise ValueError("There is no draft to send.")
@@ -285,11 +328,28 @@ def send_reply(session: Session, ctx, t: Ticket, text: str, agent: str) -> dict:
     if status == "answered":
         raise AlreadyAnswered("This ticket already has a reply. Draft it again if you really need to answer a second time.")
     edited = " ".join(text.split()) != " ".join(ans.text.split())
-    sent = True
+    previous = ans.status
+    if previous == "sent":
+        raise AlreadyAnswered("This ticket already has a reply. Draft it again if you really need to answer a second time.")
+    if previous == "sending" or not _claim(session, ans, text, edited):
+        raise ReplyInDoubt(IN_DOUBT)
+    session.commit()
     try:
         _deliver(ctx, t, text, ctx.effective(session))
-    except (DraftModeError, KillSwitchError):
-        sent = False
+    except (DraftModeError, KillSwitchError) as exc:
+        return _hold(session, ctx, t, ans, text, agent, edited, _hold_reason(exc))
+    except DeliveryUnknown:
+        record_audit(session, agent, "ticket.reply_unconfirmed", f"ticket:{t.id}", {"channel": t.channel})
+        session.commit()
+        raise
+    except AdapterError:
+        ans.status = previous  # nothing was sent: the answer goes back to what it was and the reply can be tried again
+        session.commit()
+        raise
+    return _finish(session, ctx, t, ans, text, agent, edited, "ticket.reply")
+
+
+def _finish(session: Session, ctx, t: Ticket, ans: Answer, text: str, agent: str, edited: bool, action: str) -> dict:
     if edited:
         ans.edited_text, ans.status = text, "edited"
         capture_edit(session, t, ans, text)
@@ -298,14 +358,44 @@ def send_reply(session: Session, ctx, t: Ticket, text: str, agent: str) -> dict:
     session.add(Message(ticket_id=t.id, direction="out", author=agent, body=text, created_at=ctx.now(session)))
     t.status = "answered"
     t.first_response_at = t.first_response_at or ctx.now(session)
-    record_audit(session, agent, "ticket.reply", f"ticket:{t.id}", {"sent": sent, "edited": edited, "channel": t.channel})
-    return {"sent": sent, "recorded": True, "edited": edited}
+    record_audit(session, agent, action, f"ticket:{t.id}", {"sent": True, "edited": edited, "channel": t.channel})
+    return {"sent": True, "held": False, "edited": edited}
+
+
+def _hold(session: Session, ctx, t: Ticket, ans: Answer, text: str, agent: str, edited: bool, why: str) -> dict:
+    """Nothing left because draft mode or Pause all is on. The reply is kept, the ticket is NOT answered and its reply clock keeps running."""
+    ans.status = "held"
+    if edited:
+        ans.edited_text = text
+        capture_edit(session, t, ans, text)  # the person's edit is still worth learning from
+    note = f"Reply held, nothing was sent: {why}. The ticket stays open. Send the reply again once it is turned off."
+    last = t.messages[-1] if t.messages else None
+    if not (last is not None and last.direction == "note" and last.body == note):
+        session.add(Message(ticket_id=t.id, direction="note", author="deskfern", body=note, created_at=ctx.now(session)))
+    record_audit(session, agent, "ticket.reply", f"ticket:{t.id}", {"sent": False, "held": True, "edited": edited, "channel": t.channel})
+    return {"sent": False, "held": True, "edited": edited, "reason": why}
+
+
+def resolve_reply(session: Session, ctx, t: Ticket, delivered: bool, agent: str) -> dict:
+    """A person has checked the helpdesk or the mailbox and says whether the customer got a reply whose send was never confirmed."""
+    ans = latest_answer(t)
+    if ans is None or ans.status != "sending":
+        raise ValueError("No reply is waiting to be confirmed on this ticket.")
+    if delivered:
+        out = _finish(session, ctx, t, ans, ans.edited_text or ans.text, agent, bool(ans.edited_text), "ticket.reply_confirmed")
+        return {**out, "resolved": "delivered"}
+    ans.status = "draft"
+    record_audit(session, agent, "ticket.reply_not_delivered", f"ticket:{t.id}", {"channel": t.channel})
+    return {"sent": False, "held": False, "edited": False, "resolved": "not_delivered"}
 
 
 def capture_edit(session: Session, t: Ticket, ans: Answer, edited: str) -> TestCase:
     facts = sorted({m.lower() for m in re.findall(r"\d+(?:\.\d+)?\s+(?:days?|hours?|mb|gb|members|guests|files|requests per minute|dollars|percent)", edited, re.I)})
     docs = sorted({c.chunk.document.slug for c in ans.citations})
     q = (t.messages[0].body if t.messages else t.subject)
+    same = session.scalar(select(TestCase).where(TestCase.ticket_id == t.id, TestCase.origin == "agent_edit", TestCase.expected_text == edited))  # a held reply that is sent again with the same edit is one case, not two
+    if same is not None:
+        return same
     tc = TestCase(question=f"{t.subject}. {q}", expected_text=edited, expected_docs=docs, expected_facts=facts, origin="agent_edit", ticket_id=t.id)
     session.add(tc)
     session.flush()
