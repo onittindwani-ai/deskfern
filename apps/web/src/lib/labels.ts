@@ -34,7 +34,7 @@ export const riskLabel = (r: string) => (r === "high" ? "High risk" : r === "med
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 const FLAG: Record<string, string> = {
-  injection: "orders hidden in the message", angry: "angry", other_customer_data: "asks for another person's data", needs_person: "needs a person", legal: "legal", safety: "safety", security: "security", outage: "possible outage", out_of_scope: "not about the product",
+  injection: "orders hidden in the message", angry: "angry", other_customer_data: "asks for another person's data", needs_person: "needs a person", legal: "legal", safety: "safety", security: "security", outage: "possible outage", out_of_scope: "not about the product", unverified_sender: "sender not verified", draft_failed: "could not be drafted",
 };
 /** Flags worth showing a person. The rest (refund_request, duplicate, no_product_terms, injection_only) are internal and shown elsewhere or not at all. */
 export const flagLabel = (f: string): string | null => FLAG[f] ?? null;

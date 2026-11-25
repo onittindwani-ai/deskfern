@@ -6,7 +6,10 @@
 - **The groundedness checker was tuned on a set its author labelled**, so its precision of 1.0 on 79 labelled sentences is not an independent score. The first, untouched run was precision 0.893 and recall 0.625.
 - **Search similarity is a hashed bag of words**, not a language model embedding. The Postgres full text path and the migration up, down, up cycle were run once in a throwaway local Postgres 17 (seed score 86 of 121 against 83 on SQLite; the ranking differs). The full test suite and the browser tests ran on SQLite only.
 - **No real vendor was contacted.** Adapters were tested against local imitations. Vendor page names and steps in the guides are marked UNVERIFIED where they were not read.
-- **Docker builds were not run.** The deploy files are untested.
+- **Deploy files were never run on a real host.** The CI workflow builds the Docker images and starts the compose stack on a GitHub machine, which shows they build and start, nothing more. No Hetzner, Railway or Vercel account was used. The Caddy, backup and cloud-init files are checked only for syntax and from our general knowledge.
+- **Postgres specific hardening is untested on a running Postgres.** Skipping a message whose text a Postgres refuses (a zero byte, a value over its column length), a very long search word and the savepoint handling were written from how Postgres behaves and run on SQLite. Run the suite once with `TEST_POSTGRES_URL` set before you rely on them.
+- **Crawling is guarded but not pinned.** The address is checked before each request and the connected address is checked after, but the connection is not forced to the address that was checked, and a crawl runs inside the request instead of on a queue.
+- **Not built: erasing one customer** (and the test cases that copied their words), and removing a page you deleted from `KNOWLEDGE_DIR` (delete it on the Knowledge page instead).
 - **Languages:** the demo has five non English tickets and handles them by handing over. Replies are drafted in English.
 - **Not built:** a Drive token refresh, attachments in tickets, voice, chat widget, multi brand setups, and any automatic change of your help pages.
 - **Scores for health and churn** are simple rules with fictional examples, not predictions.

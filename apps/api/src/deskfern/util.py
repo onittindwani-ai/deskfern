@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -68,3 +69,25 @@ def normalize_phone(value: str) -> str:
     v = (value or "").strip()
     out = ("+" if v.startswith("+") else "") + re.sub(r"\D", "", v)
     return out if E164_RE.match(out) else ""
+
+
+_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_ID_OK = re.compile(r"[\x21-\x7e]+")
+EXTERNAL_ID_MAX = 80  # the width of the ticket id column
+
+
+def clean_text(value: str | None, limit: int | None = None) -> str:
+    """Text from outside, safe to store: no NUL byte (Postgres cannot hold one) and no other control character except new line, return and tab."""
+    text = _CONTROL.sub("", value or "")
+    return text[:limit] if limit else text
+
+
+def safe_external_id(value: str) -> str:
+    """A ticket id that always fits its column. A long or odd id (a Message-ID can be any length) is replaced by a short hash of itself,
+    so the same message always gets the same id and the ids stay unique."""
+    cleaned = clean_text(value).strip()
+    if cleaned and len(cleaned) <= EXTERNAL_ID_MAX and _ID_OK.fullmatch(cleaned):
+        return cleaned
+    prefix = cleaned.split("-", 1)[0] if re.fullmatch(r"[a-z]{2,3}-.*", cleaned) else "x"
+    return f"{prefix}-h-{hashlib.sha256(cleaned.encode('utf-8', 'replace')).hexdigest()[:40]}"
+

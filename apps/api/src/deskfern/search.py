@@ -18,6 +18,7 @@ from deskfern.synonyms import expand
 from deskfern.textproc import has_term, stems
 
 DIM = 1024
+MAX_TOKEN = 64  # a longer word goes to neither full text query (Postgres refuses a very long word in a query); the vector search still reads it
 _IDF_CACHE: dict = {}
 
 
@@ -60,7 +61,8 @@ def rebuild(session: Session) -> int:
     session.execute(text("DROP TABLE IF EXISTS lh_fts"))
     session.execute(text("CREATE VIRTUAL TABLE lh_fts USING fts5(body, chunk_id UNINDEXED, tokenize='unicode61')"))
     rows = session.execute(select(Chunk.id, Chunk.stems)).all()
-    session.execute(text("INSERT INTO lh_fts(chunk_id, body) VALUES (:i, :b)"), [{"i": i, "b": b} for i, b in rows])
+    if rows:  # an empty list would be an error in a later SQLAlchemy release
+        session.execute(text("INSERT INTO lh_fts(chunk_id, body) VALUES (:i, :b)"), [{"i": i, "b": b} for i, b in rows])
     return len(rows)
 
 
@@ -108,7 +110,7 @@ def search(session: Session, query: str, k: int = 6) -> list[Hit]:
     qvec = hashed_vec(q)
     bm: dict[int, float] = {}
     if _is_sqlite(session):
-        match = " OR ".join(f'"{w}"' for w in dict.fromkeys(q) if w.isalnum())
+        match = " OR ".join(f'"{w}"' for w in dict.fromkeys(q) if w.isalnum() and len(w) <= MAX_TOKEN)
         if match:
             try:
                 for cid, score in session.execute(text("SELECT chunk_id, bm25(lh_fts) FROM lh_fts WHERE lh_fts MATCH :m ORDER BY bm25(lh_fts) LIMIT 30"), {"m": match}):
@@ -118,7 +120,7 @@ def search(session: Session, query: str, k: int = 6) -> list[Hit]:
                 for cid, score in session.execute(text("SELECT chunk_id, bm25(lh_fts) FROM lh_fts WHERE lh_fts MATCH :m ORDER BY bm25(lh_fts) LIMIT 30"), {"m": match}):
                     bm[int(cid)] = -float(score)
     else:  # Postgres full text search on the stored stems
-        tsq = " | ".join(w for w in dict.fromkeys(q) if w.isalnum())
+        tsq = " | ".join(w for w in dict.fromkeys(q) if w.isalnum() and len(w) <= MAX_TOKEN)
         if tsq:
             for cid, score in session.execute(text("SELECT id, ts_rank(to_tsvector('simple', stems), to_tsquery('simple', :q)) AS r FROM lh_chunk WHERE to_tsvector('simple', stems) @@ to_tsquery('simple', :q) ORDER BY r DESC LIMIT 30"), {"q": tsq}):
                 bm[int(cid)] = float(score)

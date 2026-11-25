@@ -19,9 +19,9 @@ This guide gives no price figures. It gives the shape of the offer, so you can p
 ## Onboarding checklist
 
 1. Run `02-BUSINESS-BASICS-CHECK.md` with the client: sending address and DNS records, privacy notice, how long tickets are kept, a human path in every reply.
-2. Make a fresh copy for this client with `DEMO_MODE=false`, their company name, their support address in `OWNER_EMAIL` and their own `SESSION_SECRET`.
+2. Make a fresh copy for this client with `DEMO_MODE=false`, their `COMPANY_NAME`, `EMAIL_FROM`, their support address in `OWNER_EMAIL`, the password hash from `tools/hash_password.py` and their own `SESSION_SECRET`. These are settings, not code: nothing in the code needs editing.
 3. Connect their help desk (Chatwoot, Intercom, Zendesk or Freshdesk) and their payment provider in its test mode (`03`, `04`). Start with one channel.
-4. Load their real help pages into `KNOWLEDGE_DIR` or the Knowledge page. Read the Gaps and the pages that disagree, and have the client fix the pages before anything goes live.
+4. Load their real help pages into `KNOWLEDGE_DIR` and press **Read the folder now** on the Knowledge page, or paste them there. Import their customers (below). Read the Gaps and the pages that disagree, and have the client fix the pages before anything goes live.
 5. Write the refund rule with the client in plain words and enter it on the Policies page. The shipped defaults are a starting point: refunds within 7 days for monthly plans and 14 days for annual plans, one per customer per 12 months, duplicate charges always refunded, every refund approved by a person. Keep what the client agrees to in writing.
 6. Agree the first reply targets and whether they count business hours. The defaults are urgent 1 hour, high 4, normal 24 and low 72, counted in business hours (09:00 to 17:00 on weekdays in `OFFICE_TIMEZONE`). A client with round the clock support sets `SLA_CLOCK=round_the_clock`.
 7. Agree the tone with the client. The default is plain, friendly and short. Read ten drafts together and note what to change in the pages and in the escalation owners.
@@ -29,6 +29,22 @@ This guide gives no price figures. It gives the shape of the offer, so you can p
 9. Run in draft mode for at least a week. Compare the drafts with what their agents really sent, and add the differences as test cases.
 10. Write 60 or more real questions with the right page for each and run `tools/eval_heldout.py`. Show the client the measured result, including the misses.
 11. Follow `09-GO-LIVE-CHECKLIST.md`.
+
+## Loading the client's customers
+
+Refund and account answers read each customer's plan and payment facts, so a real install needs them. Make a CSV file (one line per customer) with a header row and import it on the command line with `python -m deskfern.admin import-customers customers.csv` (on Docker: `docker compose exec api python -m deskfern.admin import-customers /tmp/customers.csv`), or as the owner through the API (`POST /api/customers/import`, the file text in a field called `csv`). There is no import button in the app yet. Importing the same file twice updates, it does not duplicate.
+
+| Column | Meaning |
+| --- | --- |
+| `email` | Required. The address the customer writes from. |
+| `name`, `plan`, `interval`, `seats` | Plan name, `monthly`, `annual` or `none`, and the number of seats. A missing plan is `free`. |
+| `first_paid`, `last_paid` | Dates like `2026-11-30`. |
+| `amount_minor`, `charge_id` | The last charge in the smallest unit (cents) and its id in the payment system. A paying customer needs the charge id so a refund can name it. |
+| `refunds_12m` | Refunds already given in the last 12 months. |
+| `flag` | Empty, or `duplicate_charge` or `charged_after_cancel` (a billing problem you already know about, which the refund rules always honour). |
+| `key` | Optional. Your own id for the customer. |
+
+A row with a problem is skipped and reported by line number; the other rows are saved. The file is limited to 5000 rows, so split a bigger one.
 
 ## Handover
 

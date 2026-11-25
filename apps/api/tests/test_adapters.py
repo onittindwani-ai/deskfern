@@ -114,7 +114,10 @@ def test_imap_inbox_reads_plain_mail_and_smtp_sends():
         srv.store.deliver(m.as_bytes())
         s = S(imap_host=srv.host, imap_port=srv.imap_port, imap_use_ssl=False, smtp_user="demo", smtp_password="demo-password", smtp_host=srv.host, smtp_port=srv.smtp_port, smtp_use_tls=False, mode=Mode.LIVE)
         got = ImapInbox(s).fetch_tickets()
-        assert got[0].email == "dana@example.test" and "export" in got[0].body and ImapInbox(s).fetch_tickets() == []
+        assert got[0].email == "dana@example.test" and "export" in got[0].body
+        assert len(ImapInbox(s).fetch_tickets()) == 1  # reading does not mark the mail as read: it is marked only once it is stored
+        ImapInbox(s).mark_seen([t.ack for t in got])
+        assert ImapInbox(s).fetch_tickets() == []
         SmtpSender(s).send(from_addr="support@example.test", to="dana@example.test", subject="Re: Export help\r\nBcc: evil@example.test", body="Hi")
         import email as _e
 

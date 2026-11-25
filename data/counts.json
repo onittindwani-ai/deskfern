@@ -1,7 +1,7 @@
 {
  "tables": 17,
- "api_paths": 44,
- "api_operations": 46,
+ "api_paths": 47,
+ "api_operations": 49,
  "pages": 10,
  "screenshots": 35,
  "tool_groups": 6,
@@ -68,16 +68,16 @@
   }
  },
  "contract_tests": 5,
- "model_path_tests": 31,
+ "model_path_tests": 33,
  "llm_fixtures": 46,
  "e2e": {
   "tests": 38,
   "files": 5
  },
  "tests": {
-  "passed": 158,
-  "skipped": 1,
+  "passed": 246,
+  "skipped": 2,
   "failed": 0,
-  "coverage_percent": 91.4
+  "coverage_percent": 93.3
  }
 }

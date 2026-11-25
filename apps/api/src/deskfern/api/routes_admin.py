@@ -11,6 +11,7 @@ from deskfern.api.serializers import iso
 from deskfern.context import Ctx, set_state
 from deskfern.models import PolicyAction, Source, Ticket
 from deskfern.registry import CATEGORIES, ENV_VARS
+from sendora_core.adapters import AdapterError
 from sendora_core.approvals import ApprovalError, decide
 from sendora_core.audit import record_audit, verify_audit_chain
 from sendora_core.models import Approval, AuditEntry
@@ -39,7 +40,10 @@ def decide_approval(approval_id: int, body: DecideIn, s: Session = Depends(db), 
     if a.action == "refund.execute" and a.payload.get("policy_action_id"):
         act = s.get(PolicyAction, int(a.payload["policy_action_id"]))
         if act is not None and body.approve:
-            policies.execute_refund(s, ctx, act.id)
+            try:
+                policies.execute_refund(s, ctx, act.id)
+            except AdapterError as exc:  # the payment system could not be used: nothing is recorded as decided, so the approval can be tried again after the fix
+                raise HTTPException(502, f"The refund was not made, and the approval was not recorded. {exc}") from exc
         elif act is not None:
             act.status = "rejected"
         if act is not None:

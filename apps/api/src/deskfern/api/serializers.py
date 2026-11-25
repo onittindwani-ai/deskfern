@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from deskfern.models import Answer, Chunk, Customer, Ticket
 from deskfern.util import aware
 
@@ -21,13 +23,21 @@ def ticket_row(t: Ticket, now) -> dict:
             "breached": bool(due and open_ and due < aware(now)), "confidence": ans.confidence if ans else None, "channel": t.channel}
 
 
+def quote_span(text: str, quote: str) -> tuple[int, int] | None:
+    """Where the quote sits in the chunk text, found word by word so line breaks and runs of spaces do not matter. None when it is not there."""
+    words = quote.split()
+    if not words:
+        return None
+    m = re.search(r"\s+".join(re.escape(w) for w in words), text)
+    return (m.start(), m.end()) if m else None
+
+
 def citation_row(c, chunk: Chunk) -> dict:
     doc = chunk.document
-    q = " ".join(c.quote.split())
-    idx = chunk.text.find(c.quote[:40])
-    idx = idx if idx >= 0 else max(0, " ".join(chunk.text.split()).find(q[:40]))
+    span = quote_span(chunk.text, c.quote)
+    lo, hi = (chunk.start + span[0], chunk.start + span[1]) if span else (chunk.start, chunk.start)  # no exact match: highlight nothing rather than a passage that is not the quote
     return {"chunk_id": chunk.id, "document_id": doc.id, "title": doc.title, "slug": doc.slug, "section": chunk.section, "updated_on": iso(doc.updated_on), "outdated": doc.outdated, "chunk_text": chunk.text, "quote": c.quote, "support": c.support,
-            "document_text": doc.text, "highlight": [chunk.start + idx, min(chunk.end, chunk.start + idx + len(c.quote))]}
+            "document_text": doc.text, "highlight": [lo, hi], "highlight_exact": span is not None}
 
 
 def answer_row(a: Answer, session) -> dict:

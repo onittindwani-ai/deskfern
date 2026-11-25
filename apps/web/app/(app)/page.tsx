@@ -34,7 +34,7 @@ export default function QueuePage() {
     { key: "urgency", header: "Urgency", width: "100px", render: (r) => <Badge tone={r.urgency === "urgent" ? "danger" : r.urgency === "high" ? "warning" : "neutral"}>{r.urgency}</Badge>, sortValue: (r) => r.urgency },
     { key: "outcome", header: "Draft", width: "190px", render: (r) => { const o = OUT[r.outcome]; return o ? <Badge tone={o.tone}>{o.label}</Badge> : <Badge>New</Badge>; }, sortValue: (r) => r.outcome },
     { key: "conf", header: "Confidence", width: "110px", align: "right", render: (r) => (r.confidence === null ? "" : `${Math.round(r.confidence * 100)}`), sortValue: (r) => r.confidence ?? -1 },
-    { key: "flags", header: "Flags", width: "1fr", render: (r) => <span className="sx-row">{r.flags.filter((f) => ["injection", "angry", "other_customer_data", "needs_person"].includes(f)).map((f) => <Badge key={f} tone="warning">{flagLabel(f)}</Badge>)}</span> },
+    { key: "flags", header: "Flags", width: "1fr", render: (r) => <span className="sx-row">{r.flags.filter((f) => ["injection", "angry", "other_customer_data", "needs_person", "unverified_sender"].includes(f)).map((f) => <Badge key={f} tone="warning">{flagLabel(f)}</Badge>)}</span> },
   ];
   const o = ov.data;
   const num = (v: number | undefined) => v ?? 0;

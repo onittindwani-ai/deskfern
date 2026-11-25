@@ -5,13 +5,13 @@ export interface TicketRow {
   id: number; external_id: string; subject: string; customer: string; plan: string; status: string; outcome: string; category: string; urgency: string; sentiment: string; language: string; flags: string[];
   created_at: string; due_at: string | null; minutes_left: number | null; breached: boolean; confidence: number | null; channel: string;
 }
-export interface Citation { chunk_id: number; document_id: number; title: string; slug: string; section: string; updated_on: string | null; outdated: boolean; chunk_text: string; quote: string; support: number; document_text: string; highlight: [number, number]; sentence_index: number }
+export interface Citation { chunk_id: number; document_id: number; title: string; slug: string; section: string; updated_on: string | null; outdated: boolean; chunk_text: string; quote: string; support: number; document_text: string; highlight: [number, number]; highlight_exact?: boolean; sentence_index: number }
 export interface SentenceRow { text: string; kind: "fact" | "template" | "decision"; chunk_id: number | null; support: number; quote: string; removed: boolean; reason: string }
 export interface AnswerRow { id: number; decision: string; status: string; text: string; edited_text: string; sentences: SentenceRow[]; citations: Citation[]; meter: { retrieval: number; groundedness: number; policy: number; confidence: number }; reason: string; writer: string; created_at: string }
 export interface TicketDetail extends TicketRow {
   customer_detail: { id: number; name: string; email: string; plan: string; interval: string; seats: number; last_paid: string | null; refunds_12m: number } | null;
   messages: { id: number; direction: string; author: string; body: string; at: string }[]; answer: AnswerRow | null; escalations: { id: number; reason: string; owner: string; status: string }[];
-  actions: { id: number; kind: string; amount_minor: number; status: string; approval_id: number | null; rationale: Record<string, unknown> }[]; duplicate_of: number | null; duplicate_of_external: string | null;
+  actions: { id: number; kind: string; amount_minor: number; currency: string; status: string; approval_id: number | null; rationale: Record<string, unknown> }[]; duplicate_of: number | null; duplicate_of_external: string | null;
 }
 export interface Knowledge { sources: { id: number; kind: string; name: string; uri: string; status: string; last_synced_at: string | null; error: string; documents: number }[]; documents: { id: number; title: string; slug: string; kind: string; source_id: number; updated_on: string | null; outdated: boolean; chunks: number; words: number }[]; chunks: number; coverage_pct: number; outdated: number }
 export interface Gap { id: number; label: string; count: number; samples: string[]; ticket_ids: number[]; status: string }

@@ -6,24 +6,27 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import time
 from datetime import UTC, datetime
+from urllib.parse import quote
 
 import httpx
 
-from deskfern.adapters.base import InboundTicket, safe_base_url
+from deskfern.adapters.base import InboundTicket, checked_ref, safe_base_url
 from sendora_core.adapters import AdapterError
 from sendora_core.safety import write_action
 
 MAX_AGE_S = 300
+CHATWOOT_ID = re.compile(r"cw-(\d{1,12})-(\d{1,12})-\d{1,20}")
 
 
 def _fail(what: str, exc: Exception) -> tuple[bool, str]:
     return False, str(exc) if isinstance(exc, AdapterError) else f"Could not reach {what}: {type(exc).__name__}."
 
 
-def _client(base: str, client) -> httpx.Client:
-    return client or httpx.Client(base_url=safe_base_url(base), timeout=20)
+def _client(base: str, client, allow_private: bool = False) -> httpx.Client:
+    return client or httpx.Client(base_url=safe_base_url(base, allow_private=allow_private), timeout=20)
 
 
 def _check(r: httpx.Response, what: str) -> None:
@@ -42,7 +45,7 @@ def verify_chatwoot_signature(secret: str, raw_body: bytes, signature: str, time
     if abs((now if now is not None else time.time()) - ts) > MAX_AGE_S or not secret or not signature:
         return False
     want = "sha256=" + hmac.new(secret.encode(), f"{timestamp}.".encode() + raw_body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(want, signature)
+    return hmac.compare_digest(want.encode(), signature.encode())  # bytes: a non ASCII signature is a plain "no", never an error
 
 
 
@@ -64,7 +67,7 @@ class ChatwootHelpdesk:
         self.settings = settings
         if not (settings.chatwoot_base_url and settings.chatwoot_api_token and settings.chatwoot_account_id):
             raise AdapterError("CHATWOOT_BASE_URL, CHATWOOT_API_TOKEN and CHATWOOT_ACCOUNT_ID must all be set.")
-        self.client = _client(settings.chatwoot_base_url, client)
+        self.client = _client(settings.chatwoot_base_url, client, getattr(settings, "allow_private_base_urls", False))
 
     def parse_webhook(self, raw: bytes, signature: str, timestamp: str) -> InboundTicket | None:
         return parse_chatwoot(self.settings, raw, signature, timestamp)
@@ -74,8 +77,11 @@ class ChatwootHelpdesk:
 
     @write_action("helpdesk.reply")
     def post_reply(self, external_id: str, body: str, private: bool = False) -> str:
-        conv = external_id.split("-")[2]  # cw-<account>-<conversation>-<message>
-        r = self.client.post(f"/api/v1/accounts/{self.settings.chatwoot_account_id}/conversations/{conv}/messages", headers={"Authorization": f"Bearer {self.settings.chatwoot_api_token}", "api_access_token": self.settings.chatwoot_api_token}, json={"content": body, "message_type": "outgoing", "private": private})
+        m = CHATWOOT_ID.fullmatch(external_id or "")  # cw-<account>-<conversation>-<message>
+        if m is None:
+            raise AdapterError("This ticket does not come from Chatwoot, so the reply was not sent to it.")
+        conv = m.group(2)
+        r = self.client.post(f"/api/v1/accounts/{quote(str(self.settings.chatwoot_account_id), safe='')}/conversations/{conv}/messages", headers={"Authorization": f"Bearer {self.settings.chatwoot_api_token}", "api_access_token": self.settings.chatwoot_api_token}, json={"content": body, "message_type": "outgoing", "private": private})
         _check(r, "Chatwoot")
         return str(r.json().get("id", ""))
 
@@ -88,7 +94,7 @@ class IntercomHelpdesk:
         self.settings = settings
         if not settings.intercom_token:
             raise AdapterError("INTERCOM_TOKEN is empty.")
-        self.client = _client(settings.intercom_base_url, client)
+        self.client = _client(settings.intercom_base_url, client, getattr(settings, "allow_private_base_urls", False))
 
     def _h(self):
         return {"Authorization": f"Bearer {self.settings.intercom_token}", "Accept": "application/json"}
@@ -105,7 +111,7 @@ class IntercomHelpdesk:
 
     @write_action("helpdesk.reply")
     def post_reply(self, external_id: str, body: str, private: bool = False) -> str:
-        r = self.client.post(f"/conversations/{external_id.removeprefix('ic-')}/reply", headers=self._h(), json={"message_type": "note" if private else "comment", "type": "admin", "admin_id": self.settings.intercom_admin_id, "body": body})
+        r = self.client.post(f"/conversations/{checked_ref(external_id.removeprefix('ic-'), 'conversation id')}/reply", headers=self._h(), json={"message_type": "note" if private else "comment", "type": "admin", "admin_id": self.settings.intercom_admin_id, "body": body})
         _check(r, "Intercom")
         return external_id
 
@@ -122,7 +128,7 @@ class ZendeskHelpdesk:
         self.settings = settings
         if not (settings.zendesk_subdomain and settings.zendesk_email and settings.zendesk_token):
             raise AdapterError("ZENDESK_SUBDOMAIN, ZENDESK_EMAIL and ZENDESK_TOKEN must all be set.")
-        self.client = _client(settings.zendesk_base_url or f"https://{settings.zendesk_subdomain}.zendesk.com", client)
+        self.client = _client(settings.zendesk_base_url or f"https://{settings.zendesk_subdomain}.zendesk.com", client, getattr(settings, "allow_private_base_urls", False))
 
     def _h(self):
         raw = f"{self.settings.zendesk_email}/token:{self.settings.zendesk_token}".encode()
@@ -136,7 +142,7 @@ class ZendeskHelpdesk:
 
     @write_action("helpdesk.reply")
     def post_reply(self, external_id: str, body: str, private: bool = False) -> str:
-        r = self.client.put(f"/api/v2/tickets/{external_id.removeprefix('zd-')}.json", headers=self._h(), json={"ticket": {"comment": {"body": body, "public": not private}}})
+        r = self.client.put(f"/api/v2/tickets/{checked_ref(external_id.removeprefix('zd-'), 'ticket id')}.json", headers=self._h(), json={"ticket": {"comment": {"body": body, "public": not private}}})
         _check(r, "Zendesk")
         return external_id
 
@@ -153,7 +159,7 @@ class FreshdeskHelpdesk:
         self.settings = settings
         if not (settings.freshdesk_domain and settings.freshdesk_api_key):
             raise AdapterError("FRESHDESK_DOMAIN and FRESHDESK_API_KEY must both be set.")
-        self.client = _client(settings.freshdesk_base_url or f"https://{settings.freshdesk_domain}.freshdesk.com", client)
+        self.client = _client(settings.freshdesk_base_url or f"https://{settings.freshdesk_domain}.freshdesk.com", client, getattr(settings, "allow_private_base_urls", False))
 
     def _h(self):
         return {"Authorization": "Basic " + base64.b64encode(f"{self.settings.freshdesk_api_key}:X".encode()).decode()}
@@ -167,7 +173,7 @@ class FreshdeskHelpdesk:
     def post_reply(self, external_id: str, body: str, private: bool = False) -> str:
         if private:
             raise AdapterError("Private notes use a different Freshdesk path that is not built. Send a public reply or add the note in Deskfern.")
-        r = self.client.post(f"/api/v2/tickets/{external_id.removeprefix('fd-')}/reply", headers=self._h(), json={"body": body})
+        r = self.client.post(f"/api/v2/tickets/{checked_ref(external_id.removeprefix('fd-'), 'ticket id')}/reply", headers=self._h(), json={"body": body})
         _check(r, "Freshdesk")
         return external_id
 

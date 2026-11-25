@@ -12,6 +12,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from deskfern.adapters.base import with_settings
 from deskfern.models import Customer, PolicyAction, PolicyRule, Ticket
 from sendora_core.approvals import ApprovalError, request_approval, require_approved
 from sendora_core.audit import record_audit
@@ -90,7 +91,7 @@ def refund_elsewhere(session: Session, ticket: Ticket) -> PolicyAction | None:
     return session.scalar(select(PolicyAction).where(PolicyAction.charge_id == charge, PolicyAction.ticket_id != ticket.id, PolicyAction.status.in_(ACTIVE_REFUND)).order_by(PolicyAction.id))
 
 
-def request_refund(session: Session, ticket: Ticket, decision: RefundDecision, requested_by: str = "deskfern") -> PolicyAction | None:
+def request_refund(session: Session, ticket: Ticket, decision: RefundDecision, requested_by: str = "deskfern", currency: str = "USD") -> PolicyAction | None:
     """Create the refund intent and its approval. Only for an eligible decision. Never pays."""
     if not decision.eligible or ticket.customer is None:
         return None
@@ -98,10 +99,10 @@ def request_refund(session: Session, ticket: Ticket, decision: RefundDecision, r
     if existing:
         return existing
     c = ticket.customer
-    act = PolicyAction(ticket_id=ticket.id, kind="refund", amount_minor=decision.amount_minor, charge_id=c.charge_id or f"ch_demo_{c.key}", rationale={"code": decision.code, "explanation": decision.explanation, **decision.facts}, status="requested")
+    act = PolicyAction(ticket_id=ticket.id, kind="refund", amount_minor=decision.amount_minor, currency=currency.upper()[:3], charge_id=c.charge_id or f"ch_demo_{c.key}", rationale={"code": decision.code, "explanation": decision.explanation, **decision.facts}, status="requested")
     session.add(act)
     session.flush()
-    ap = request_approval(session, "refund.execute", f"Refund {decision.amount_minor / 100:.2f} USD to {c.name} (ticket {ticket.external_id}): {decision.explanation}", {"policy_action_id": act.id, "ticket_id": ticket.id}, "high", requested_by)
+    ap = request_approval(session, "refund.execute", f"Refund {decision.amount_minor / 100:.2f} {act.currency} to {c.name} (ticket {ticket.external_id}): {decision.explanation}", {"policy_action_id": act.id, "ticket_id": ticket.id}, "high", requested_by)
     act.approval_id = ap.id
     session.flush()
     return act
@@ -115,9 +116,7 @@ def execute_refund(session: Session, ctx, action_id: int) -> PolicyAction:
     if act.status == "executed":
         return act
     require_approved(session, act.approval_id or -1, "refund.execute")
-    settings = ctx.effective(session)
-    adapter = ctx.adapters.payments
-    adapter.settings = settings
+    adapter = with_settings(ctx.adapters.payments, ctx.effective(session))  # a copy: the shared adapter is never changed
     try:
         ref = adapter.refund(charge_id=act.charge_id, amount_minor=act.amount_minor, reason="requested_by_customer", idempotency_key=f"deskfern-refund-{act.id}", metadata={"ticket": str(act.ticket_id)})
         act.status, act.external_id = "executed", ref

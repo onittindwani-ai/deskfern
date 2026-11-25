@@ -42,10 +42,10 @@ class Ctx:
         return self.settings.model_copy(update=upd) if upd else self.settings
 
     def now(self, session: Session):
-        return clock.now(session, self.settings.demo_mode)
+        return clock.now(session, self.settings.demo_shortcuts)
 
     def today(self, session: Session) -> date:
-        return clock.today(session, self.settings.demo_mode)
+        return clock.today(session, self.settings.demo_shortcuts)
 
     def llm(self, session: Session) -> LLM:
         # LLM_BACKEND=offline (default) | fixture | anthropic. The offline stand in is the zero account default.

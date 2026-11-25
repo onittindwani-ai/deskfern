@@ -16,6 +16,7 @@ from deskfern.chunking import parse_text
 from deskfern.ingest import store_document
 from deskfern.models import Answer, Chunk, Message, PolicyAction, Source, Ticket
 from deskfern.offline_llm import OfflineBackend, blocks
+from deskfern.textproc import split_sentences
 from mock.anthropic_mock import FakeAnthropic, ok
 from sendora_core.llm import LLMError, build_llm, reset_budgets
 from sendora_core.safety import UNTRUSTED_CLOSE, UNTRUSTED_OPEN, UNTRUSTED_POLICY
@@ -313,7 +314,7 @@ def test_the_judge_can_rescue_a_gray_sentence_only_with_a_real_quote_that_passes
         chunks = [(c.id, c.text) for c in s.scalars(select(Chunk).join(Chunk.document).where(Chunk.text.like("%refunded within 7 days%")))]
         sup = grounding.check_sentence(gray, chunks, *(answering._ents_weight(s)))
     assert chunks and not sup.supported
-    quote_of = lambda body: next(t for _, t in pages_in(body) if "refunded within 7 days" in t).split(". ")[0] + "."  # noqa: E731
+    quote_of = lambda body: next(x for _, t in pages_in(body) for x in split_sentences(t) if "refunded within 7 days" in x)  # noqa: E731  (the sentence that really says it; the old test quoted the first sentence of the page, an annual plan sentence)
     good = lambda body: json.dumps({"supported": True, "quote": quote_of(body), "reason": "same meaning"})  # noqa: E731
     s1, fake = run_judge(seeded, gray, good)
     bad_quote = lambda body: json.dumps({"supported": True, "quote": "Monthly plans can be refunded within 90 days of anything.", "reason": "x"})  # noqa: E731
@@ -321,8 +322,29 @@ def test_the_judge_can_rescue_a_gray_sentence_only_with_a_real_quote_that_passes
     no = lambda body: json.dumps({"supported": False, "quote": "", "reason": "no"})  # noqa: E731
     s3, _ = run_judge(seeded, gray, no)
     assert sup.checks["ok"] and grounding.GRAY_MIN <= sup.score < grounding.THRESHOLD  # the sentence is in the gray band: hard checks pass, coverage under the threshold
-    assert not s1.removed and "model judge" in s1.reason and s1.support == grounding.THRESHOLD and fake.requests
+    assert not s1.removed and "model judge" in s1.reason and fake.requests
+    assert grounding.GRAY_MIN <= s1.support < grounding.THRESHOLD  # it keeps the support the code measured for the quote, not a fixed pass mark (the old test asserted a fixed 0.65 and quoted an annual plan sentence)
     assert s2.removed and s3.removed
+
+
+def test_a_quote_that_does_not_cover_the_sentence_cannot_pass_as_its_source(seeded):
+    gray = "You can get a monthly plan refunded in the first week after you pay for it."
+
+    def unrelated(body):  # a real sentence from a real page, but about something else
+        sentence = next(x for _, t in pages_in(body) for x in split_sentences(t) if "refund" not in x.lower() and len(x.split()) > 5)
+        return json.dumps({"supported": True, "quote": sentence, "reason": "x"})
+
+    got, fake = run_judge(seeded, gray, unrelated)
+    assert fake.requests and got.removed and "model judge" not in got.reason  # the judge was asked, said yes, and the code still said no
+
+
+def test_the_judge_sees_only_the_passages_the_writer_was_given(seeded):
+    with seeded.factory() as s:
+        ids = [c.id for c in s.scalars(select(Chunk).limit(3))]
+        seen = []
+        gray = "You can get a monthly plan refunded in the first week after you pay for it."
+        answering.check_and_mark(s, [(gray, ids[0])], ids, lambda sentence, chunks: (seen.append([c for c, _ in chunks]), None)[1], {ids[1]})
+    assert all(chunk_ids == [ids[1]] for chunk_ids in seen)  # the other passages (for example one that holds orders to a model) never reach the judge
 
 
 def test_the_judge_is_never_asked_about_a_sentence_that_fails_a_hard_check(seeded):

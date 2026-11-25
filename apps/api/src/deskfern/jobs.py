@@ -14,9 +14,9 @@ INTERVALS = {"intake": 60, "insights": 600}
 
 
 def job_intake(session: Session, ctx: Ctx) -> dict:
-    fetched = desk.fetch_from_helpdesk(session, ctx)
+    got = desk.fetch_all(session, ctx)
     out = desk.process_new(session, ctx)
-    return {"fetched": fetched, **out}
+    return {**got, **out}
 
 
 def job_insights(session: Session, ctx: Ctx) -> dict:
@@ -26,8 +26,21 @@ def job_insights(session: Session, ctx: Ctx) -> dict:
 JOBS = {"intake": job_intake, "insights": job_insights}
 
 
+def _run(fn, ctx: Ctx) -> Handler:
+    """One job, inside a savepoint: if it fails, only its own changes are undone and the worker can still record the failure. Mailbox messages are
+    marked read only after the job's work has been committed."""
+
+    def handler(session: Session, payload: dict) -> dict:
+        with session.begin_nested():
+            result = fn(session, ctx)
+        desk.run_after_commit(session)
+        return result
+
+    return handler
+
+
 def make_handlers(ctx: Ctx) -> dict[str, Handler]:
-    return {kind: (lambda session, payload, fn=fn: fn(session, ctx)) for kind, fn in JOBS.items()}
+    return {kind: _run(fn, ctx) for kind, fn in JOBS.items()}
 
 
 def schedule_due(session: Session, ctx: Ctx) -> int:

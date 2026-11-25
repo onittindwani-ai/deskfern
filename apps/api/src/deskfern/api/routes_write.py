@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+import hashlib
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -8,11 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from deskfern import crawler as crawl_mod
-from deskfern import desk, ingest, insights, netguard, policies, search
+from deskfern import desk, importing, ingest, insights, netguard, policies, search
 from deskfern.api.deps import db, get_ctx, owner, user, writer
 from deskfern.chunking import ParsedDoc
 from deskfern.context import Ctx
 from deskfern.models import CrawlJob, Escalation, Gap, PolicyAction, Source, TestCase, Ticket
+from sendora_core.adapters import AdapterError
 from sendora_core.audit import record_audit
 
 router = APIRouter(prefix="/api", tags=["write"])
@@ -35,6 +36,15 @@ def reply(tid: int, b: ReplyIn, s: Session = Depends(db), ctx: Ctx = Depends(get
         return desk.send_reply(s, ctx, _ticket(s, tid), b.text, u["user"])
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+    except desk.AlreadyAnswered as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except AdapterError as exc:  # the channel failed: nothing was recorded, the ticket stays open and the reply can be tried again
+        raise HTTPException(502, f"The reply was not sent. {exc}") from exc
+
+
+@router.post("/tickets/{tid}/confirm-sender", summary="A person has checked who the sender is. The customer record is matched, then the draft can use the account.")
+def confirm_sender(tid: int, s: Session = Depends(db), u: dict = Depends(writer)):
+    return desk.confirm_sender(s, _ticket(s, tid), u["user"])
 
 
 @router.post("/tickets/{tid}/redraft", summary="Draft again from the current knowledge")
@@ -79,7 +89,7 @@ def refund(tid: int, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx), u: d
         if other is not None:
             ot = s.get(Ticket, other.ticket_id)
             raise HTTPException(409, f"A refund for this payment is already {'waiting' if other.status == 'requested' else 'handled'} on ticket {ot.external_id if ot else other.ticket_id}, so no second request was made.")
-    act = mine or policies.request_refund(s, t, d, requested_by=u["user"])
+    act = mine or policies.request_refund(s, t, d, requested_by=u["user"], currency=ctx.settings.currency)
     if t.status in {"new", "drafted", "escalated", "refused"}:
         t.status = "awaiting_approval"
     return {"action_id": act.id, "approval_id": act.approval_id, "already": mine is not None}
@@ -113,8 +123,9 @@ def add_document(b: TextDocIn, s: Session = Depends(db), ctx: Ctx = Depends(get_
     src = s.scalar(select(Source).where(Source.kind == "folder")) or Source(kind="folder", name="Pasted pages", uri="")
     s.add(src)
     s.flush()
-    slug = "".join(c if c.isalnum() else "-" for c in b.title.lower()).strip("-")[:60]
-    doc, state = ingest.store_document(s, src, f"pasted/{slug}.md", ParsedDoc(b.title, f"# {b.title}\n\n{b.text.strip()}\n", "md", ctx.today(s), slug), ctx.today(s))
+    slug = "".join(c if c.isalnum() else "-" for c in b.title.lower()).strip("-")[:60] or "page"
+    path = f"pasted/{slug}-{hashlib.sha256(b.title.strip().encode()).hexdigest()[:8]}.md"  # the hash keeps two titles that read alike ("Refund policy", "Refund policy!") from replacing each other
+    doc, state = ingest.store_document(s, src, path, ParsedDoc(b.title, f"# {b.title}\n\n{b.text.strip()}\n", "md", ctx.today(s), slug), ctx.today(s))
     search.rebuild(s)
     record_audit(s, u["user"], "knowledge.add", f"document:{doc.id}", {"state": state})
     return {"document_id": doc.id, "state": state, "chunks": len(doc.chunks)}
@@ -132,6 +143,8 @@ def run_crawl(s: Session, ctx: Ctx, job: CrawlJob) -> None:
     st = ctx.settings
     try:
         if src.uri.startswith("demo://"):
+            if not st.demo_shortcuts:
+                raise netguard.UnsafeURL("The sample site (demo://) only works in the demo. Enter the address of your own help site.")
             from fastapi.testclient import TestClient
 
             from mock.source_mocks import SiteMock
@@ -146,14 +159,17 @@ def run_crawl(s: Session, ctx: Ctx, job: CrawlJob) -> None:
         res = ingest.crawl_into_source(s, src, c, start, ctx.today(s))
         job.fetched, job.skipped, job.log, job.status = res["pages"], len(res["skipped"]), [f"{u}: {why}" for u, why in res["skipped"]][:50], "done"
         src.status, src.error, src.last_synced_at = "ready", "", ctx.now(s)
-    except (netguard.UnsafeURL, Exception) as exc:  # a failed crawl is shown, never a crash
-        job.status, job.log = "failed", [str(exc)[:300]]
-        src.status, src.error = "error", str(exc)[:300]
+    except Exception as exc:  # a failed crawl is shown, never a crash. Our own refusals are shown in words; anything else only by its type, as it may hold page text
+        why = str(exc)[:300] if isinstance(exc, netguard.UnsafeURL) else f"The crawl failed ({type(exc).__name__}). Check the address and try again."
+        job.status, job.log = "failed", [why]
+        src.status, src.error = "error", why
     job.finished_at = ctx.now(s)
 
 
 @router.post("/knowledge/sources", summary="Add a source. A site starts a crawl.")
 def add_source(b: SourceIn, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx), u: dict = Depends(writer)):
+    if b.kind == "site" and b.uri.startswith("demo://") and not ctx.settings.demo_shortcuts:
+        raise HTTPException(422, "The sample site (demo://) only works in the demo. Enter the address of your own help site.")
     if b.kind == "site" and not b.uri.startswith("demo://"):
         try:
             netguard.check_url(b.uri)  # refuse before anything is stored, so a refused address never touches an existing source
@@ -226,3 +242,27 @@ def gap_suggest(gid: int, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx),
 @router.post("/insights/refresh", summary="Recompute gaps and health scores")
 def refresh(s: Session = Depends(db), ctx: Ctx = Depends(get_ctx), u: dict = Depends(writer)):
     return {"gaps": insights.detect_gaps(s), "health": insights.recompute_health(s, ctx.now(s))}
+
+
+@router.post("/knowledge/folder/sync", summary="Read the KNOWLEDGE_DIR folder (markdown, text and PDF files) into the knowledge base")
+def sync_folder(s: Session = Depends(db), ctx: Ctx = Depends(get_ctx), u: dict = Depends(writer)):
+    try:
+        counts = importing.sync_knowledge_folder(s, ctx)
+    except importing.ImportProblem as exc:
+        raise HTTPException(409, str(exc)) from exc
+    record_audit(s, u["user"], "knowledge.folder.sync", None, counts)
+    return counts
+
+
+class CustomersIn(BaseModel):
+    csv: str = Field(min_length=3, max_length=importing.MAX_CSV_CHARS)
+
+
+@router.post("/customers/import", summary="Add or update customers from CSV text (owner only). Refund answers read their plan and payment facts.")
+def import_customers(b: CustomersIn, s: Session = Depends(db), u: dict = Depends(owner)):
+    try:
+        report = importing.import_customers(s, b.csv)
+    except importing.ImportProblem as exc:
+        raise HTTPException(422, str(exc)) from exc
+    record_audit(s, u["user"], "customers.import", None, {k: report[k] for k in ("created", "updated", "skipped")})
+    return report

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from deskfern import grounding, policies, search
 from deskfern.models import Chunk, Customer, Document
 from deskfern.textproc import has_term, numbers, split_sentences, stem, stems
-from deskfern.triage import Triage
+from deskfern.triage import Triage, find_injection
 
 RETRIEVAL_MIN = 0.40
 READY_AT = 0.70
@@ -31,6 +31,7 @@ T_OUTAGE = "Thank you for letting us know. I have passed this to the support tea
 INCIDENT_ROUTES = [("safety", T_SAFETY, "A safety word was found in the message. A person must read it first.", "owner"), ("security", T_SECURITY, "The message describes a possible security incident or exposed data. A person must read it first.", "owner"),
                    ("outage", T_OUTAGE, "The message describes a possible outage. A person must read it first.", "support lead")]
 ARCHIVED_WORDS = {"archived", "archive", "deprecated", "superseded", "legacy", "retired", "obsolete", "old", "previous"}
+T_VERIFY = "Thanks for writing. Before anyone can look at an account or a payment, a person on the support team needs to confirm who you are, and they will reply to you."
 T_CONFLICT = "Our help pages give two different answers to this, so I have asked the support team to confirm the right one."
 
 
@@ -128,9 +129,11 @@ def _ents_weight(session: Session) -> tuple[dict, set]:
     return {w: v for w, v in idf.items()}, grounding.entities_from(texts)
 
 
-def check_and_mark(session: Session, cands: list[tuple[str, int]], allowed_ids: list[int], judge=None) -> list[Sent]:
+def check_and_mark(session: Session, cands: list[tuple[str, int]], allowed_ids: list[int], judge=None, judge_ids: set[int] | None = None) -> list[Sent]:
     """Judge every drafted sentence against the allowed passages. `judge(sentence, passages)` (optional, a model) may rescue a sentence whose hard checks pass but whose
-    coverage is in the gray band: it must return a quote that is really on a page, and the quote is checked again by the same code rules."""
+    coverage is in the gray band: it must return a quote that is really on a page, and the quote is checked again by the same code rules. The judge sees only `judge_ids`
+    (the passages the writer was given, never one that holds orders to a model). The rescued sentence keeps the support the code measured for its quote, and is
+    accepted only when the quote covers at least the bottom of the gray band, so a quote that has nothing to do with the sentence cannot pass as its source."""
     info = _chunks(session, allowed_ids)
     weight, ents = _ents_weight(session)
     chunks = [(cid, c.text) for cid, (c, d) in info.items()]
@@ -141,12 +144,12 @@ def check_and_mark(session: Session, cands: list[tuple[str, int]], allowed_ids: 
         sup = grounding.check_sentence(text, chunks, weight, ents, ctx)
         s = Sent(text, "fact", sup.chunk_id, sup.score, sup.quote)
         if not sup.supported and judge is not None and sup.checks.get("ok") and grounding.GRAY_MIN <= sup.score < grounding.THRESHOLD:
-            found = judge(text, chunks)
+            found = judge(text, [(c, t) for c, t in chunks if judge_ids is None or c in judge_ids])
             if found:
                 cid2, quote = found
                 score2, checks2 = grounding.score_against(text, quote, weight, ents, ctx.get(cid2, ""))
-                if checks2["ok"]:
-                    s.chunk_id, s.quote, s.support, s.reason = cid2, quote, grounding.THRESHOLD, "Accepted by the model judge: the quote is on the page and passes the same number, unit, negation and name checks."
+                if checks2["ok"] and score2 >= grounding.GRAY_MIN:
+                    s.chunk_id, s.quote, s.support, s.reason = cid2, quote, score2, f"Accepted by the model judge: the quote is on the page, covers the sentence ({score2:.2f}) and passes the same number, unit, negation and name checks."
                     out.append(s)
                     continue
         if not sup.supported:
@@ -257,6 +260,10 @@ def draft_for(session: Session, ctx, ticket, tri: Triage, writer: Writer | None 
         return Draft("refuse", [Sent(T_REFUSE, "template")], retrieval=1.0, groundedness=1.0, reason="The question is not about the product." if question.strip(" .") else "After removing instructions aimed at the system, no question was left.")
     cust: Customer | None = ticket.customer
     # 2 refund requests
+    if "refund_request" in tri.flags and "unverified_sender" in (getattr(ticket, "flags", None) or []):
+        # Anyone can type someone else's address into a From line or a chat form. Nothing about that address's account or payments is looked at or said,
+        # not even "there is no payment on file", which would tell a stranger whether the address is a customer.
+        return Draft("escalate", [Sent(T_VERIFY, "template")], reason="The sender's address could not be verified, so no account or payment was looked at. Press Confirm sender once you have checked who it is.", escalation_owner="support lead")
     if "refund_request" in tri.flags:
         d = policies.decide_refund(policies.get_rule(session), cust, ctx.today(session))
         pol = policy_sentences(session, d.code, cust.interval if cust else "monthly")
@@ -301,7 +308,7 @@ def draft_for(session: Session, ctx, ticket, tri: Triage, writer: Writer | None 
     writer_note = getattr(writer, "note", "") or ""
     if not cands:
         return Draft("escalate", [Sent(T_ESCALATE, "template")], retrieval=strength, reason=("No sentence in the sources covers the question. " + writer_note).strip(), escalation_owner="support lead")
-    sents = check_and_mark(session, cands, [h.chunk_id for h in hits], judge)
+    sents = check_and_mark(session, cands, [h.chunk_id for h in hits], judge, {cid for cid, text in passages if not find_injection(text)})
     kept = [s for s in sents if not s.removed]
     removed = len(sents) - len(kept)
     if not kept:

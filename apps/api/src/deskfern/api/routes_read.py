@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import json
+import time
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -48,7 +51,7 @@ def ticket(tid: int, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
     acts = s.scalars(select(PolicyAction).where(PolicyAction.ticket_id == tid)).all()
     return {**ticket_row(t, ctx.now(s)), "customer_detail": customer_row(t.customer), "messages": [{"id": m.id, "direction": m.direction, "author": m.author, "body": m.body, "at": iso(m.created_at)} for m in t.messages],
             "answer": answer_row(ans, s) if ans else None, "escalations": [{"id": e.id, "reason": e.reason, "owner": e.owner, "status": e.status} for e in esc],
-            "actions": [{"id": a.id, "kind": a.kind, "amount_minor": a.amount_minor, "status": a.status, "approval_id": a.approval_id, "rationale": a.rationale} for a in acts], "duplicate_of": t.duplicate_of_id,
+            "actions": [{"id": a.id, "kind": a.kind, "amount_minor": a.amount_minor, "currency": a.currency, "status": a.status, "approval_id": a.approval_id, "rationale": a.rationale} for a in acts], "duplicate_of": t.duplicate_of_id,
             "duplicate_of_external": (s.get(Ticket, t.duplicate_of_id).external_id if t.duplicate_of_id else None)}
 
 
@@ -102,13 +105,24 @@ def insights_page(s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
     return {**o, "categories": cats, "citations": cit, "top_sources": sorted(({"title": k, "uses": v} for k, v in by_doc.items()), key=lambda x: -x["uses"])[:8], "escalations": esc}
 
 
+EXPLAIN_CACHE_S = 300  # the same numbers get the same sentence for five minutes, so reloading the page never spends the model again
+
+
 @router.get("/insights/explain", summary="The Insights numbers in plain words")
-def insights_explain(s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
+def insights_explain(request: Request, s: Session = Depends(db), ctx: Ctx = Depends(get_ctx)):
     from deskfern import model_tasks
 
     facts = {**insights.overview(s, ctx.now(s)), "open_gaps": s.query(Gap).filter(Gap.status == "open").count()}
     facts = {k: v for k, v in facts.items() if isinstance(v, int | float)}
-    return model_tasks.explain_overview(ctx.llm(s), facts)
+    cache: dict = request.app.state.__dict__.setdefault("explain_cache", {})
+    key = json.dumps(sorted(facts.items()))
+    hit = cache.get(key)
+    if hit and time.monotonic() - hit[0] < EXPLAIN_CACHE_S:
+        return hit[1]
+    out = model_tasks.explain_overview(ctx.llm(s), facts)
+    cache.clear()
+    cache[key] = (time.monotonic(), out)
+    return out
 
 
 @router.get("/testcases", summary="Regression test cases made from agent edits")

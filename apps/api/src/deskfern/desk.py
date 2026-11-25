@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import timedelta
 from pathlib import Path
@@ -11,31 +12,67 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from deskfern import answering, ingest, policies, search, triage
-from deskfern.adapters.base import InboundTicket
+from deskfern.adapters.base import InboundTicket, with_settings
+from deskfern.datadir import REPO_DATA, data_dir
 from deskfern.models import Answer, Citation, Customer, Document, Escalation, Gap, Message, Source, TestCase, Ticket
-from deskfern.util import aware
+from deskfern.util import aware, clean_text, safe_external_id
+from sendora_core.adapters import AdapterError
 from sendora_core.audit import record_audit
 from sendora_core.events import record_event
 from sendora_core.safety import DraftModeError, KillSwitchError
 
-DEFAULT_DATA = Path(__file__).resolve().parents[4] / "data"
+log = logging.getLogger("deskfern.desk")
+DEFAULT_DATA = REPO_DATA
+UNVERIFIED_NOTE = "The sender's address could not be verified, so no customer account or payment was looked at. When you have checked who this is, press Confirm sender and draft again."
+UNVERIFIED = "unverified_sender"  # the sender address could not be checked, so no customer is matched and no account facts are used
+
+
+class AlreadyAnswered(Exception):
+    """The ticket already has its reply. A second reply is refused so a double click or two agents never send the customer two copies."""
 
 
 def _link_customer(session: Session, email: str) -> Customer | None:
     return session.scalar(select(Customer).where(Customer.email == (email or "").lower())) if email else None
 
 
+def sender_verified(ctx, inb: InboundTicket) -> bool:
+    """Is the sender address believed? The demo channel always is. Otherwise the channel must have proved it (a mail server that checked
+    DMARC), or the owner must have named the channel in TRUSTED_SENDER_CHANNELS, or REQUIRE_VERIFIED_SENDER must be off."""
+    st = ctx.settings
+    if not st.require_verified_sender or inb.channel == "seed":
+        return True
+    return bool(inb.verified) or inb.channel in st.trusted_channels()
+
+
 def intake_ticket(session: Session, ctx, inb: InboundTicket) -> Ticket | None:
-    """Store a message from any channel as a ticket. A message already stored (same external id) is ignored."""
-    if session.scalar(select(Ticket).where(Ticket.external_id == inb.external_id)):
+    """Store a message from any channel as a ticket. A message already stored (same external id) is ignored.
+
+    Everything from outside is cleaned first (no NUL byte, ids and fields cut to their column width). A sender that is not verified is never
+    matched to a customer record: anyone can type someone else's address into a From line or a chat form."""
+    ext = safe_external_id(inb.external_id)
+    if session.scalar(select(Ticket).where(Ticket.external_id == ext)):
         return None
-    cust = _link_customer(session, inb.email)
-    t = Ticket(external_id=inb.external_id, channel=inb.channel, customer=cust, requester_email=inb.email, subject=inb.subject[:300], created_at=inb.created_at or ctx.now(session), status="new")
-    t.messages.append(Message(direction="in", author=inb.email or inb.name, body=inb.body[:20000], created_at=t.created_at))
+    addr = clean_text(inb.email, 254).strip().lower()
+    verified = sender_verified(ctx, inb)
+    cust = _link_customer(session, addr) if verified else None
+    t = Ticket(external_id=ext, channel=clean_text(inb.channel, 20), customer=cust, requester_email=addr, subject=clean_text(inb.subject, 300), created_at=inb.created_at or ctx.now(session), status="new", flags=[] if verified else [UNVERIFIED])
+    t.messages.append(Message(direction="in", author=clean_text(addr or inb.name, 254), body=clean_text(inb.body, 20000), created_at=t.created_at))
     session.add(t)
     session.flush()
     record_event(session, "ticket.received", "ticket", t.id, {"channel": inb.channel})
     return t
+
+
+def confirm_sender(session: Session, t: Ticket, agent: str) -> dict:
+    """A person has checked, outside the desk, that the sender is who the address says. The customer record is matched and the next draft may use it."""
+    flags = list(t.flags or [])
+    if UNVERIFIED not in flags:
+        return {"already": True, "linked": t.customer_id is not None}
+    t.flags = [f for f in flags if f != UNVERIFIED]
+    t.customer = _link_customer(session, t.requester_email)
+    record_audit(session, agent, "ticket.sender_confirmed", f"ticket:{t.id}", {"linked": t.customer is not None})
+    session.flush()
+    return {"already": False, "linked": t.customer is not None}
 
 
 def _duplicate_of(session: Session, t: Ticket, text: str) -> Ticket | None:
@@ -65,7 +102,8 @@ def process_ticket(session: Session, ctx, t: Ticket, writer=None) -> Answer | No
     body = t.messages[0].body if t.messages else ""
     text = f"{t.subject}. {body}"
     tri = ctx.assist(session, t.subject, body, triage.triage(t.subject, body, t.requester_email, t.customer.plan if t.customer else "free")) if hasattr(ctx, "assist") else triage.triage(t.subject, body, t.requester_email, t.customer.plan if t.customer else "free")
-    t.category, t.urgency, t.sentiment, t.language, t.flags = tri.category, tri.urgency, tri.sentiment, tri.language, list(tri.flags)
+    unverified = UNVERIFIED in (t.flags or [])
+    t.category, t.urgency, t.sentiment, t.language, t.flags = tri.category, tri.urgency, tri.sentiment, tri.language, list(tri.flags) + ([UNVERIFIED] if unverified else [])
     t.due_at = ctx.settings.due_at(aware(t.created_at), t.urgency)
     dup = _duplicate_of(session, t, tri.cleaned or text)
     if dup and (("refund_request" in tri.flags) == ("refund_request" in (dup.flags or []))):
@@ -93,42 +131,107 @@ def process_ticket(session: Session, ctx, t: Ticket, writer=None) -> Answer | No
     t.status = "escalated" if d.outcome in {"escalate", "conflict_escalate"} else "refused" if d.outcome == "refuse" else "drafted"
     if "injection" in t.flags:
         session.add(Message(ticket_id=t.id, direction="note", author="deskfern", body="This message contained text that tried to give the system orders. It was treated as plain text and no instruction was followed.", created_at=t.created_at))
+    if unverified and not any(m.direction == "note" and m.body.startswith(UNVERIFIED_NOTE[:40]) for m in t.messages):
+        session.add(Message(ticket_id=t.id, direction="note", author="deskfern", body=UNVERIFIED_NOTE, created_at=t.created_at))
     if d.escalation_owner:
         session.add(Escalation(ticket_id=t.id, reason=d.reason or "Needs a person.", owner=d.escalation_owner))
     if d.refund is not None and d.refund.eligible:
-        act = policies.request_refund(session, t, d.refund)
+        act = policies.request_refund(session, t, d.refund, currency=ctx.settings.currency)
         if act:
             t.status = "awaiting_approval"
     record_event(session, "ticket.drafted", "ticket", t.id, {"outcome": d.outcome, "confidence": d.confidence})
     return ans
 
 
+def _hand_over_failed(session: Session, ticket_id: int, exc: Exception) -> None:
+    """A ticket that could not be drafted goes to a person, with the reason named by type only (the text of the error can hold customer words)."""
+    try:
+        with session.begin_nested():
+            t = session.get(Ticket, ticket_id)
+            if t is None:
+                return
+            why = f"Deskfern could not draft this ticket ({type(exc).__name__}). A person must read it."
+            t.status, t.outcome = "escalated", "escalate"
+            t.flags = list(t.flags or []) + ["draft_failed"]
+            session.add(Escalation(ticket_id=t.id, reason=why, owner="support lead"))
+            session.add(Message(ticket_id=t.id, direction="note", author="deskfern", body=why, created_at=t.created_at))
+    except Exception:
+        log.exception("could not hand over ticket %s after a failed draft", ticket_id)
+
+
 def process_new(session: Session, ctx) -> dict:
-    n, out = 0, {}
-    for t in session.scalars(select(Ticket).where(Ticket.status == "new").order_by(Ticket.created_at, Ticket.id)):
-        process_ticket(session, ctx, t)
+    """Draft every new ticket. Each one is its own unit: if one fails it is handed to a person and the rest carry on."""
+    n, failed, out = 0, 0, {}
+    for t in list(session.scalars(select(Ticket).where(Ticket.status == "new").order_by(Ticket.created_at, Ticket.id))):
+        tid = t.id
+        try:
+            with session.begin_nested():
+                process_ticket(session, ctx, t)
+        except Exception as exc:
+            failed += 1
+            log.warning("could not draft ticket %s: %s", tid, type(exc).__name__)
+            _hand_over_failed(session, tid, exc)
+            continue
         n += 1
         out[t.outcome] = out.get(t.outcome, 0) + 1
-    return {"processed": n, "outcomes": out}
+    return {"processed": n, "outcomes": out, "failed": failed}
+
+
+def fetch_all(session: Session, ctx) -> dict:
+    """Bring in new messages from the helpdesk and the inbox. Each message is stored on its own: a message that cannot be stored is counted and
+    skipped (and a mailbox message stays unread), the rest still arrive. Mailbox messages are marked read only after the whole batch is committed."""
+    stored, failed, errors = 0, 0, []
+    for source in (ctx.adapters.helpdesk, ctx.adapters.inbox):
+        fn = getattr(source, "fetch_new", None) or getattr(source, "fetch_tickets", None)
+        try:
+            batch = fn() if fn else []
+        except AdapterError as exc:
+            errors.append(str(exc)[:200])  # one source being down must not stop the other
+            continue
+        acks: list[str] = []
+        for inb in batch:
+            try:
+                with session.begin_nested():
+                    made = intake_ticket(session, ctx, inb)
+            except Exception as exc:
+                failed += 1
+                log.warning("could not store one inbound message from %s: %s", inb.channel, type(exc).__name__)
+                continue
+            stored += 1 if made else 0
+            if inb.ack:
+                acks.append(inb.ack)
+        mark = getattr(source, "mark_seen", None)
+        if acks and mark:
+            session.info.setdefault("after_commit", []).append(lambda m=mark, a=tuple(acks): m(list(a)))
+    return {"fetched": stored, "failed": failed, "errors": errors}
 
 
 def fetch_from_helpdesk(session: Session, ctx) -> int:
-    n = 0
-    for source in (ctx.adapters.helpdesk, ctx.adapters.inbox):
-        fn = getattr(source, "fetch_new", None) or getattr(source, "fetch_tickets", None)
-        for inb in fn() if fn else []:
-            if intake_ticket(session, ctx, inb):
-                n += 1
-    return n
+    return fetch_all(session, ctx)["fetched"]
+
+
+def run_after_commit(session: Session) -> int:
+    """Commit, then do what was waiting for the commit (mark mailbox messages read). If the commit fails, nothing was marked and the mail comes again."""
+    pending = session.info.pop("after_commit", [])
+    if not pending:
+        return 0
+    session.commit()
+    done = 0
+    for call in pending:
+        try:
+            call()
+            done += 1
+        except Exception as exc:  # harmless: the message is seen again next time and recognised as already stored
+            log.warning("could not mark mail as read: %s", type(exc).__name__)
+    return done
 
 
 def demo_arrival(session: Session, ctx) -> str | None:
     """Demo only: each Run now brings in the next fictional new ticket from the seed file, so the button has something to do. Returns its subject, or None when none are left."""
     from deskfern.models import State
 
-    root = Path(ctx.settings.seed_dir) if ctx.settings.seed_dir else DEFAULT_DATA
     try:
-        arrivals = json.loads((root / "seed.json").read_text()).get("arrivals", [])
+        arrivals = json.loads((data_dir(ctx.settings.seed_dir) / "seed.json").read_text()).get("arrivals", [])
     except (OSError, ValueError):
         return None
     row = session.get(State, "arrivals_next")
@@ -154,32 +257,48 @@ def latest_answer(t: Ticket) -> Answer | None:
     return live[-1] if live else None
 
 
+def _deliver(ctx, t: Ticket, text: str, settings) -> None:
+    """Send the reply the way the ticket came in: mail goes back by mail (in the same thread), helpdesk tickets go back through that helpdesk.
+    The adapter is a copy that reads the current settings, so the kill switch and draft mode are checked on every send."""
+    if t.channel == "email":
+        if not t.requester_email:
+            raise AdapterError("This message has no sender address, so there is nobody to send a reply to.")
+        original = t.external_id[3:] if t.external_id.startswith("em-") and not t.external_id.startswith("em-h-") else ""  # a hashed id cannot be turned back into the Message-ID
+        subject = t.subject if t.subject.lower().startswith("re:") else f"Re: {t.subject}"
+        with_settings(ctx.adapters.email, settings).send(from_addr=settings.email_from, to=t.requester_email, subject=subject, body=text, in_reply_to=original)
+    else:
+        with_settings(ctx.adapters.helpdesk, settings).post_reply(t.external_id, text)
+
+
 def send_reply(session: Session, ctx, t: Ticket, text: str, agent: str) -> dict:
-    """An agent sends the reply (the draft or an edited version). In draft mode the reply is recorded and nothing leaves. An edit becomes a regression test case."""
+    """An agent sends the reply (the draft or an edited version). In draft mode the reply is recorded and nothing leaves. An edit becomes a regression test case.
+
+    A ticket that already has its reply refuses a second one (AlreadyAnswered). If the channel fails (AdapterError) nothing is recorded: the ticket
+    is not marked answered and the reply clock keeps running, because nobody got an answer."""
     ans = latest_answer(t)
     if ans is None:
         raise ValueError("There is no draft to send.")
     text = text.strip()
     if not text:
         raise ValueError("The reply is empty.")
+    status = session.execute(select(Ticket.status).where(Ticket.id == t.id).with_for_update()).scalar_one()  # locks the row on Postgres, so two senders at once are taken one after the other
+    if status == "answered":
+        raise AlreadyAnswered("This ticket already has a reply. Draft it again if you really need to answer a second time.")
     edited = " ".join(text.split()) != " ".join(ans.text.split())
+    sent = True
+    try:
+        _deliver(ctx, t, text, ctx.effective(session))
+    except (DraftModeError, KillSwitchError):
+        sent = False
     if edited:
         ans.edited_text, ans.status = text, "edited"
         capture_edit(session, t, ans, text)
     else:
         ans.status = "sent"
-    sent = True
-    try:
-        settings = ctx.effective(session)
-        adapter = ctx.adapters.helpdesk
-        adapter.settings = settings
-        adapter.post_reply(t.external_id, text)
-    except (DraftModeError, KillSwitchError):
-        sent = False
     session.add(Message(ticket_id=t.id, direction="out", author=agent, body=text, created_at=ctx.now(session)))
     t.status = "answered"
     t.first_response_at = t.first_response_at or ctx.now(session)
-    record_audit(session, agent, "ticket.reply", f"ticket:{t.id}", {"sent": sent, "edited": edited})
+    record_audit(session, agent, "ticket.reply", f"ticket:{t.id}", {"sent": sent, "edited": edited, "channel": t.channel})
     return {"sent": sent, "recorded": True, "edited": edited}
 
 
@@ -208,9 +327,9 @@ def run_test_case(session: Session, ctx, tc: TestCase) -> bool:
     return tc.last_result == "pass"
 
 
-def load_world(session: Session, ctx, data_dir: Path | None = None) -> dict:
+def load_world(session: Session, ctx, folder: Path | None = None) -> dict:
     """Seed customers, the refund rule, the knowledge folder and the demo tickets."""
-    root = data_dir or (Path(ctx.settings.seed_dir) if ctx.settings.seed_dir else DEFAULT_DATA)
+    root = folder or data_dir(ctx.settings.seed_dir)
     seed = json.loads((root / "seed.json").read_text())
     from datetime import date
 

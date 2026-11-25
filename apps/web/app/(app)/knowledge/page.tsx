@@ -31,6 +31,7 @@ export default function KnowledgePage() {
     onSuccess: (j) => { notify.success(`Crawled ${j.fetched} pages, skipped ${j.skipped}.`); qc.invalidateQueries(); },
     onError: (e: Error) => { notify.error("The crawl did not run", e.message); qc.invalidateQueries(); },
   });
+  const syncFolder = useMutation({ mutationFn: () => post<{ new: number; changed: number; same: number; skipped: number }>("/knowledge/folder/sync"), onSuccess: (r) => { notify.success(`Read the folder: ${r.new} new, ${r.changed} changed, ${r.same} unchanged, ${r.skipped} skipped.`); qc.invalidateQueries(); }, onError: (e: Error) => notify.error("Could not read the folder", e.message) });
   const gapStatus = useMutation({ mutationFn: (v: { id: number; status: string }) => post(`/gaps/${v.id}/status`, { status: v.status }), onSuccess: (_r, v) => { notify.info(v.status === "covered" ? "Marked as covered. It will not come back." : "Dismissed. It will not come back."); qc.invalidateQueries(); }, onError: (e: Error) => notify.error("Could not change the gap", e.message) });
   const cols: Column<Doc>[] = [
     { key: "title", header: "Page", width: "1.5fr", render: (r) => <strong>{r.title}</strong>, sortValue: (r) => r.title },
@@ -57,7 +58,7 @@ export default function KnowledgePage() {
               <span className="lh-toolbar"><Button size="sm" disabled={!canWrite} disabledReason="Viewers cannot change gaps" onClick={async () => { await gapStatus.mutateAsync({ id: x.id, status: "covered" }); }}>Covered now</Button><Button size="sm" variant="ghost" disabled={!canWrite} disabledReason="Viewers cannot change gaps" onClick={async () => { await gapStatus.mutateAsync({ id: x.id, status: "dismissed" }); }}>Dismiss</Button></span>
             </div>))}</div> },
         { value: "add", label: "Add a source", content: (
-          <Card title="Add knowledge">
+          <div className="lh-stack"><Card title="Add knowledge">
             <SegmentedControl<"paste" | "site"> label="How" value={kind} onChange={setKind} options={[{ value: "paste", label: "Paste a page" }, { value: "site", label: "Crawl a site" }]} />
             {kind === "paste" ? (
               <div className="lh-stack"><Field label="Page title" value={title} onChange={setTitle} validate={(v) => (v.trim().length < 2 ? "Give the page a title." : null)} maxLength={200} />
@@ -68,7 +69,11 @@ export default function KnowledgePage() {
                 <div><Button variant="primary" disabled={!canWrite} disabledReason="Viewers cannot start a crawl" onClick={async () => { await start.mutateAsync(); }}>Start the crawl</Button></div>
                 {crawl ? <div role="status" className="lh-stack"><Badge tone={crawl.status === "done" ? "success" : "danger"}>{crawl.status}</Badge><span className="lh-mini">{crawl.fetched} pages read, {crawl.skipped} skipped</span>{crawl.log.slice(0, 6).map((l) => <span key={l} className="lh-mini">{l}</span>)}</div> : null}</div>
             )}
-          </Card>) },
+          </Card>
+          <Card title="Knowledge folder" headingLevel={3}>
+            <p className="lh-mini">Reads the markdown, text and PDF files in the folder named by KNOWLEDGE_DIR. Press it again after you change a file; unchanged files stay as they are.</p>
+            <div><Button disabled={!canWrite} disabledReason="Viewers cannot change knowledge" onClick={async () => { await syncFolder.mutateAsync(); }}>Read the folder now</Button></div>
+          </Card></div>) },
       ]} />
     </div>
   );
