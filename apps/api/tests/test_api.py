@@ -94,7 +94,7 @@ def test_webhook_needs_a_good_signature(tmp_path):
     from deskfern.api.app import create_app
     from deskfern.config import Settings
 
-    s = Settings(database_url=f"sqlite:///{tmp_path / 'w.sqlite3'}", session_secret="Rt7Kq2Vw9Xm4Zc8Lb3Nf6Hy1Js5Dp0Ga2Ue7Tq4Wi9", _env_file=None, demo_mode=False, owner_password_hash="x", chatwoot_base_url="https://cw.example.test", chatwoot_api_token="t", chatwoot_account_id="1", chatwoot_webhook_secret="whsec")
+    s = Settings(database_url=f"sqlite:///{tmp_path / 'w.sqlite3'}", session_secret="test-only-Rt7Kq2Vw9Xm4Zc8Lb3Nf6Hy1Js5Dp0Ga2Ue7Tq4Wi9", _env_file=None, demo_mode=False, owner_password_hash="x", chatwoot_base_url="https://cw.example.test", chatwoot_api_token="t", chatwoot_account_id="1", chatwoot_webhook_secret="whsec")
     s.helpdesk_adapter = "seed"
     c = TestClient(create_app(s))
     body = json.dumps({"event": "message_created", "message_type": "incoming", "id": 5, "content": "How do I export?", "created_at": int(time.time()), "sender": {"email": "a@example.test", "name": "A"}, "conversation": {"display_id": 9}}).encode()
