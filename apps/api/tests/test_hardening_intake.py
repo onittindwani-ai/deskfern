@@ -295,7 +295,7 @@ def test_the_engine_never_prints_the_values_of_a_failed_statement(tmp_path):
 
     shared = make_engine(f"sqlite:///{tmp_path / 'plain.sqlite3'}")
     private = make_private_engine(f"sqlite:///{tmp_path / 'private.sqlite3'}")
-    for engine, hidden in ((shared, False), (private, True)):
+    for engine in (shared, private):  # since base 1.2.4 both engines hide the values of a failed statement
         Base.metadata.create_all(engine)
         with make_session_factory(engine)() as s:
             s.add(State(key="k", value="SECRET-CUSTOMER-WORDS"))
@@ -303,4 +303,4 @@ def test_the_engine_never_prints_the_values_of_a_failed_statement(tmp_path):
             s.add(State(key="k", value="SECRET-CUSTOMER-WORDS"))
             with pytest.raises(IntegrityError) as e:
                 s.flush()
-        assert ("SECRET-CUSTOMER-WORDS" not in str(e.value)) is hidden  # the shared engine shows them (the control), the app's engine does not
+        assert "SECRET-CUSTOMER-WORDS" not in str(e.value)
