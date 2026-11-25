@@ -3,7 +3,7 @@
 You need Python 3.12 (or uv), Node 22 and pnpm (`corepack enable` or `npm i -g pnpm`). Nothing is sent anywhere.
 
 1. `python3.12 -m venv .venv`. No python3.12 on your Mac? Use uv instead: `uv venv --python 3.12 .venv`.
-2. `.venv/bin/pip install -e packages/core-py -e "apps/api[dev]"`, or with uv: `uv pip install --python .venv/bin/python -e packages/core-py -e "apps/api[dev]"`. (Steps 1 and 2 together: `make install`.)
+2. `.venv/bin/pip install -c constraints.txt -e packages/core-py -e "apps/api[dev]"`, or with uv: `uv pip install --python .venv/bin/python -c constraints.txt -e packages/core-py -e "apps/api[dev]"`. (Steps 1 and 2 together: `make install`.)
 3. `pnpm install` then `pnpm build`
 4. Start the API in one terminal: `MODE=draft DEMO_MODE=true SEED_DIR=./data SESSION_SECRET=demo-only-secret INSECURE_COOKIES=1 .venv/bin/python -m uvicorn deskfern.api.app:app_from_env --factory --port 8000 --proxy-headers`
 5. Start the web app in another: `API_BASE_URL=http://127.0.0.1:8000 INSECURE_COOKIES=1 NEXT_PUBLIC_DEMO_HINT=1 pnpm --filter web start`
