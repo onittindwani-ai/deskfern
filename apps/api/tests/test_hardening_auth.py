@@ -82,7 +82,7 @@ def test_a_real_owner_password_switches_every_demo_shortcut_off_even_in_demo_mod
     assert any("owner password" in p for p in s.problems())
 
 
-def test_a_demo_with_a_real_owner_password_never_loads_the_fictional_world(tmp_path):
+def test_a_demo_with_a_real_owner_password_never_loads_the_sample_world(tmp_path):
     app = create_app(real_settings(tmp_path, demo_mode=True))
     with app.state.ctx.factory() as db:
         assert db.scalars(select(Customer)).first() is None

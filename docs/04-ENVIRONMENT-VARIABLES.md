@@ -43,7 +43,7 @@ Where to put them: **local** in a `.env` file at the repo root (copied from `.en
 ## DEMO_MODE
 
 - Required: optional
-- What it does: `true` loads the fictional world and switches on the public demo logins (the demo password, the reset, tick and advance buttons). The moment OWNER_PASSWORD_HASH is set, every one of those shortcuts is off even if this stays `true`. The default in `.env.example` is `false`.
+- What it does: `true` loads the sample world and switches on the public demo logins (the demo password, the reset, tick and advance buttons). The moment OWNER_PASSWORD_HASH is set, every one of those shortcuts is off even if this stays `true`. The default in `.env.example` is `false`.
 - How to get it:
   1. Set `false` on a real install, then set OWNER_PASSWORD_HASH.
 - Cost: Free.
@@ -138,7 +138,7 @@ Where to put them: **local** in a `.env` file at the repo root (copied from `.en
 ## LLM_BACKEND
 
 - Required: optional
-- What it does: Where the model jobs run (reply sentences, the sentence judge, the triage second look, help page suggestions and the Insights wording). `offline` (the default) is a built in rules stand in, not a language model, and needs no account. `fixture` replays recorded answers from `LLM_FIXTURES_DIR` (the repo ships `data/llm_fixtures/`, recorded from a local fake server, not from a real model). `anthropic` calls a real model and needs `ANTHROPIC_API_KEY`; it has not been run against the real service (UNVERIFIED). Whatever writes the sentences, the code groundedness check runs on them and unsupported sentences are removed. A model can never refund, approve or send. See `facts/models.md`.
+- What it does: Where the model jobs run (reply sentences, the sentence judge, the triage second look, help page suggestions and the Insights wording). `offline` (the default) is a built in rules stand in, not a language model, and needs no account. `fixture` replays recorded answers from `LLM_FIXTURES_DIR` (the repo ships `data/llm_fixtures/`, recorded from a local mock server, not from a real model). `anthropic` calls a real model and needs `ANTHROPIC_API_KEY`; it has not been run against the real service (UNVERIFIED). Whatever writes the sentences, the code groundedness check runs on them and unsupported sentences are removed. A model can never refund, approve or send. See `facts/models.md`.
 - How to get it:
   1. Leave it as `offline` to try the product.
   2. For `anthropic`, create a key in the Anthropic console and set `ANTHROPIC_API_KEY`.
@@ -324,7 +324,7 @@ Where to put them: **local** in a `.env` file at the repo root (copied from `.en
 ## ALLOW_DEMO_SERVER, ALLOW_PRIVATE_BASE_URLS, MAX_BODY_BYTES, SEED_DIR
 
 - Required: optional
-- What it does: ALLOW_DEMO_SERVER lets a throw away demo run on a server database. Leave it `false`: a demo on a real database would load fictional data into it. ALLOW_PRIVATE_BASE_URLS lets an integration (a self hosted Chatwoot) sit on a private or loopback address; hosted helpdesks never need it, and every other adapter address must be a public https address. MAX_BODY_BYTES is the largest request the API reads (default 26214400, 25 MB); a bigger one is refused before it is read. SEED_DIR is the folder with the demo data and the recorded model answers, found automatically when you run from the repository.
+- What it does: ALLOW_DEMO_SERVER lets a throw away demo run on a server database. Leave it `false`: a demo on a real database would load sample data into it. ALLOW_PRIVATE_BASE_URLS lets an integration (a self hosted Chatwoot) sit on a private or loopback address; hosted helpdesks never need it, and every other adapter address must be a public https address. MAX_BODY_BYTES is the largest request the API reads (default 26214400, 25 MB); a bigger one is refused before it is read. SEED_DIR is the folder with the demo data and the recorded model answers, found automatically when you run from the repository.
 - How to get it: Leave all four alone unless a step in these docs tells you to change one.
 - Cost: Free.
 - Local, Vercel, Railway, Hetzner: see the paragraph at the top. The web host only needs API_BASE_URL and SESSION_SECRET.

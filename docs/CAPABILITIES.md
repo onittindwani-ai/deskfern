@@ -1,6 +1,6 @@
 # Capabilities, with pictures
 
-All pictures are of the demo with fictional data. Phone and desktop versions are in `docs/screenshots`.
+All pictures are of the demo with sample data. Phone and desktop versions are in `docs/screenshots`.
 
 | Page | What you can do | Picture |
 | --- | --- | --- |

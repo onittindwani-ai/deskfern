@@ -2,7 +2,7 @@
 
 Deskfern is a support desk that answers customer questions from your own help pages and policies, and shows the source of every sentence. When it cannot find an answer, or the question needs a person (a refund, a legal, safety or security word, a possible outage), it hands the ticket to a person with a note. An angry customer gets a high urgency mark and a drafted reply for an agent to check. It never pays a refund by itself.
 
-You can try all of it with made up data in about five minutes, with no accounts and no keys.
+You can try all of it with demo data in about five minutes, with no accounts and no keys.
 
 If you set it up for someone else's business, one copy serves one client: see `10-USING-IT-FOR-A-CLIENT.md`.
 
@@ -23,6 +23,6 @@ If you set it up for someone else's business, one copy serves one client: see `1
 
 ## What is real and what is not
 
-- The demo uses a fictional company, fictional customers and fictional help pages. Nothing leaves your computer.
+- The demo uses a sample company, sample customers and sample help pages. Nothing leaves your computer.
 - The answer writer in the demo is a rule based stand in that picks sentences from your pages. It is not a language model. Real model wording is not tested here. See `ANSWER-EVAL.md` for the measured results, including the poor ones.
 - No real vendor was contacted while building this. Every connection was tested only against a local copy that imitates the vendor. See `FACTS-AND-SOURCES.md` for what was read from vendor pages and what was not.

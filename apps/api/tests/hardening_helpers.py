@@ -1,4 +1,4 @@
-"""Shared set up for the hardening tests: a real (not demo) install, recording adapters, and the fictional world on a demo context."""
+"""Shared set up for the hardening tests: a real (not demo) install, recording adapters, and the sample world on a demo context."""
 
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ class RecordingPayments:
         return True, "ok"
 
 
-class FakeInbox:
+class StubInbox:
     """A mailbox that hands out messages and records what was marked as read, and what the database held at that moment."""
 
     def __init__(self, items, ctx=None):
@@ -115,7 +115,7 @@ def attach(ctx: Ctx, **adapters) -> Ctx:
 
 
 def load_world_unprocessed(ctx: Ctx) -> None:
-    """Customers, the refund rule and the help pages of the fictional company, with the demo tickets left undrafted."""
+    """Customers, the refund rule and the help pages of the sample company, with the demo tickets left undrafted."""
     with ctx.factory() as s:
         desk_mod.load_world(s, ctx)
         search.rebuild(s)

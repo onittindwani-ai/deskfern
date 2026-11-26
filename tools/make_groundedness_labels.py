@@ -1,5 +1,5 @@
 """Hand labelled sentences for the groundedness check. Written BEFORE the checker. Each item: a sentence a writer might draft, the document ids it cites, and a label
-(supported = the cited text backs every claim in it, unsupported = at least one claim is wrong, missing or invented). Same author as the seed (said plainly in the docs)."""
+(supported = the cited text backs every claim in it, unsupported = at least one claim is wrong, missing or not in the pages). Same author as the seed (said plainly in the docs)."""
 import json
 from pathlib import Path
 
@@ -46,7 +46,7 @@ L = [
  ("Free workspaces keep deleted notes for 14 days.", ["trash-retention"], S),
  ("Team workspaces get 20 GB of file storage for every member.", ["uploads"], S),
  ("Mentioned members get an email unless they switched notifications off.", ["comments"], S),
- # unsupported: wrong numbers, swapped names, invented features, flipped meaning, true sounding extras
+ # unsupported: wrong numbers, swapped names, features not in the pages, flipped meaning, true sounding extras
  ("An invitation link stays valid for 14 days.", ["invite-members"], U),
  ("A free workspace can have as many as 10 members.", ["invite-members"], U),
  ("Admins can change billing and delete the workspace.", ["roles"], U),

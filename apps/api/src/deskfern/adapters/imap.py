@@ -55,7 +55,7 @@ def is_loopback(host: str) -> bool:
 def sender_is_authenticated(msg, authserv_id: str) -> bool:
     """True only when the mail provider you named says the sender's domain passed DMARC.
 
-    A sender can type any header into a message, including a fake Authentication-Results. So only the TOP header counts (a receiving server
+    A sender can type any header into a message, including a forged Authentication-Results. So only the TOP header counts (a receiving server
     adds its own above everything that came with the message), and only when it starts with the name you set in INBOUND_AUTHSERV_ID.
     With no name set nothing is ever verified."""
     wanted = (authserv_id or "").strip().lower()

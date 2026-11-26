@@ -21,11 +21,11 @@ from deskfern.context import Ctx
 from deskfern.dbsetup import make_private_engine
 from deskfern.models import Escalation, Message, Ticket
 from mock.desk_mocks import FreshdeskMock, IntercomMock, ZendeskMock
-from mock.mail_servers import FakeMailServers
+from mock.mail_servers import StubMailServers
 from sendora_core.adapters import AdapterError
 from sendora_core.db import Base, make_session_factory
 from sendora_core.models import AuditEntry
-from tests.hardening_helpers import FakeInbox, login, real_settings
+from tests.hardening_helpers import StubInbox, login, real_settings
 from tests.test_hardening_send import APPROVER, live  # noqa: F401
 from tests.test_round2_lows import mail, settings_for
 from tests.test_round3_helpdesks import rows, zendesk
@@ -165,7 +165,7 @@ WHOLE_ANSWERS = {
 @pytest.mark.parametrize("answer", list(WHOLE_ANSWERS))
 def test_an_unreadable_helpdesk_answer_is_named_and_never_stops_the_mailbox_or_the_drafting(tmp_path, vendor, answer):
     hd = _adapter(tmp_path, vendor, lambda request: WHOLE_ANSWERS[answer](vendor))
-    ctx = desk_ctx(tmp_path, hd, FakeInbox([InboundTicket("em-<ok@example.test>", "email", "dana@example.test", "Export help", "How do I export my notes to a file?", "Dana", verified=True, ack="1")]))
+    ctx = desk_ctx(tmp_path, hd, StubInbox([InboundTicket("em-<ok@example.test>", "email", "dana@example.test", "Export help", "How do I export my notes to a file?", "Dana", verified=True, ack="1")]))
     with ctx.factory() as s:
         out = jobs.job_intake(s, ctx)  # the whole intake job, as the worker runs it: no exception
         s.commit()
@@ -259,7 +259,7 @@ def test_a_screenshot_does_not_make_a_mail_too_large_only_its_text_part_is_read(
             return getattr(self.c, name)
 
     monkeypatch.setattr(imap.ImapInbox, "_imap", lambda self: Spy(orig(self)))
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         srv.store.deliver(big_mail(1, html=html))
         ctx = make(tmp_path, srv)
         out = cycle(ctx)
@@ -275,7 +275,7 @@ def test_a_screenshot_does_not_make_a_mail_too_large_only_its_text_part_is_read(
 def test_a_mail_too_large_even_for_its_text_becomes_a_ticket_for_a_person_and_is_shown(live, tmp_path, monkeypatch):
     monkeypatch.setattr(imap, "MAX_MESSAGE_BYTES", 5_000)
     c, _, h = live
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         srv.store.deliver(mail(1000, pad=2000))  # a single part: its whole body is the text
         srv.store.deliver(mail(1, "How do I export my notes?"))
@@ -307,7 +307,7 @@ def test_a_mail_the_desk_cannot_read_at_all_becomes_a_ticket_for_a_person_and_th
         return real(self, c, uid, salvage)
 
     monkeypatch.setattr(ImapInbox, "_read_one", broken)
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         srv.store.deliver(mail(1))
         srv.store.deliver(mail(2))
         ctx = make(tmp_path, srv)
@@ -389,7 +389,7 @@ def erased_ctx(live):
 
 def test_a_message_from_an_erased_address_becomes_a_minimal_ticket_for_a_person(live):
     c, ctx, h = erased_ctx(live)
-    inbox = FakeInbox([InboundTicket("em-<back@example.test>", "email", EMAIL.upper(), "I am back, my invoice is wrong", "My card number is 4111 and my invoice is wrong.", "N", verified=True, ack="5")])
+    inbox = StubInbox([InboundTicket("em-<back@example.test>", "email", EMAIL.upper(), "I am back, my invoice is wrong", "My card number is 4111 and my invoice is wrong.", "N", verified=True, ack="5")])
     ctx.adapters.helpdesk, ctx.adapters.inbox = NoMail(), inbox
     out = run(ctx)
     assert out["fetched"] == 0 and out["stubs"] == 1
@@ -461,7 +461,7 @@ def test_an_imap_answer_with_a_literal_inside_the_structure_falls_back_to_a_tick
             return getattr(self.c, name)
 
     monkeypatch.setattr(imap.ImapInbox, "_imap", lambda self: Literal(orig(self)))
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         srv.store.deliver(big_mail(1))
         ctx = make(tmp_path, srv)
         out = cycle(ctx)

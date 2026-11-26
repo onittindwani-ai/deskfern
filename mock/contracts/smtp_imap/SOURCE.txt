@@ -1,4 +1,4 @@
 Protocols, not a web API: SMTP (RFC 5321), message format (RFC 5322), IMAP4rev1 (RFC 3501). There is no OpenAPI or other machine readable contract.
 The adapters use Python's standard library clients (smtplib, imaplib, email), which implement these RFCs, so the wire format is not written by hand here.
-What is tested: the adapters against the local fake servers in mock/mail_servers.py (apps/api/tests/test_adapters.py), and that a message the sender builds has the RFC 5322 header fields (mock/tests/test_contracts.py). No excerpt was saved from the RFC pages.
+What is tested: the adapters against the local mock servers in mock/mail_servers.py (apps/api/tests/test_adapters.py), and that a message the sender builds has the RFC 5322 header fields (mock/tests/test_contracts.py). No excerpt was saved from the RFC pages.
 Never run against a real mail host.

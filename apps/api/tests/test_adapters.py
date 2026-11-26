@@ -11,7 +11,7 @@ from deskfern.adapters.sources import DriveSource, NotionSource
 from deskfern.config import Settings
 from deskfern.registry import build_adapters, build_registry
 from mock.desk_mocks import ChatwootMock, FreshdeskMock, IntercomMock, ZendeskMock
-from mock.mail_servers import FakeMailServers
+from mock.mail_servers import StubMailServers
 from mock.source_mocks import DriveMock, NotionMock
 from mock.stripe_mock import StripeMock
 from sendora_core.adapters import AdapterError
@@ -107,7 +107,7 @@ def test_drive_and_notion_read_only_sources():
 
 
 def test_imap_inbox_reads_plain_mail_and_smtp_sends():
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         m = EmailMessage()
         m["From"], m["To"], m["Subject"], m["Message-ID"] = "Dana <dana@example.test>", "support@example.test", "Export help", "<abc@example.test>"
         m.set_content("How do I export my notes?")

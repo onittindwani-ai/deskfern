@@ -1,6 +1,6 @@
-# Independent evaluation: two test sets written by people who never saw the code
+# Independent evaluation: two test sets written by separate AI test authors who never saw the code
 
-This page reports how the desk did on two sets of tickets and help pages that were written by separate test authors who read only the product description. They never saw the code, the seed data or the earlier tests. Everything in the sets is made up. The files are in `data/eval/independent/` and the tool is `tools/eval_independent.py`.
+This page reports how the desk did on two sets of tickets and help pages that were written by separate AI test authors who read only the product description. They never saw the code, the seed data or the earlier tests. Everything in the sets is sample data. The files are in `data/eval/independent/` and the tool is `tools/eval_independent.py`.
 
 The desk's writer, triage and checker in this repo are rules, not a language model. These numbers say how good the rules are. They say nothing about a live model (see `14-LIMITS-AND-HONEST-NOTES.md`).
 
@@ -38,7 +38,7 @@ The desk's writer, triage and checker in this repo are rules, not a language mod
 | Groundedness precision | 0.893 | <!--n:independent.a_first.ground_precision-->0.737<!--/n--> | 0.8 | <!--n:independent.b_first.ground_precision-->0.757<!--/n--> | 0.757 |
 | Groundedness recall | 0.625 | <!--n:independent.a_first.ground_recall-->0.683<!--/n--> | 0.683 | <!--n:independent.b_first.ground_recall-->0.549<!--/n--> | 0.549 |
 
-The old self written numbers (first run, before any tuning) were 13 correct answers out of 63 held out questions and groundedness precision 0.893 and recall 0.625 on 79 sentences labelled by the same author. Those were written by the people who wrote the rules, so they were easier in some ways and harder in others. A set A rerun after the first batch of changes (before the safety read) is saved too (`set_a_after_improvements.json`: 46 of 78).
+The old self written numbers (first run, before any tuning) were 13 correct answers out of 63 held out questions and groundedness precision 0.893 and recall 0.625 on 79 sentences labelled by the same author. Those were written by the same author who wrote the rules, so they were easier in some ways and harder in others. A set A rerun after the first batch of changes (before the safety read) is saved too (`set_a_after_improvements.json`: 46 of 78).
 
 ## Triage safety numbers (the ones that matter most)
 
@@ -98,7 +98,7 @@ Groundedness by kind of mistake, first runs (wrong sentences caught, of the wron
 | Wrong subject | 9 of 10 | 9 of 10 | 6 of 10 | 6 of 10 |
 | Stale information | 5 of 6 | 5 of 6 | 1 of 3 | 1 of 3 |
 | Wrong plan | 6 of 7 | 6 of 7 | none | none |
-| Invented detail | 3 of 3 | 3 of 3 | 3 of 3 | 3 of 3 |
+| Detail not in the pages | 3 of 3 | 3 of 3 | 3 of 3 | 3 of 3 |
 | True but not in the pages | 3 of 3 | 3 of 3 | 1 of 1 | 1 of 1 |
 | Partial negation | 0 of 1 | 0 of 1 | none | none |
 

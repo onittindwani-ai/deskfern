@@ -228,7 +228,7 @@ def test_freshdesk_and_stripe_timeouts_are_adapter_errors_not_crashes(tmp_path):
         stripe.refund(charge_id="ch_1", amount_minor=500, reason="r", idempotency_key="k", metadata={})
 
 
-class FakeSmtp:
+class StubSmtp:
     def __init__(self, error):
         self.error = error
 
@@ -245,7 +245,7 @@ class FakeSmtp:
 def sender(tmp_path, monkeypatch, error):
     s = real_settings(tmp_path, mode="live", smtp_host="smtp.rivera.example.test")
     out = SmtpSender(s)
-    monkeypatch.setattr(out, "_smtp", lambda: FakeSmtp(error))
+    monkeypatch.setattr(out, "_smtp", lambda: StubSmtp(error))
     return out
 
 

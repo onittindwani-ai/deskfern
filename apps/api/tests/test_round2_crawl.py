@@ -98,7 +98,7 @@ def test_a_normal_crawl_is_unchanged():
 
 # ---- the request only queues; the worker crawls ----
 
-class FakeSiteCrawler:
+class StubSiteCrawler:
     """Stands in for the real crawler the worker builds, and counts the calls so the test can see WHEN the crawl ran."""
 
     def __init__(self):
@@ -115,16 +115,16 @@ class FakeSiteCrawler:
 def real(tmp_path, monkeypatch):
     monkeypatch.setattr(netguard, "check_url", lambda url, resolver=None: url)  # the address check needs the internet; it has its own tests
     app = create_app(real_settings(tmp_path))
-    fake = FakeSiteCrawler()
-    app.state.ctx.crawler_factory = lambda ctx: fake
+    stub = StubSiteCrawler()
+    app.state.ctx.crawler_factory = lambda ctx: stub
     c = TestClient(app, base_url="http://api.test")
-    return c, app.state.ctx, login(c), fake
+    return c, app.state.ctx, login(c), stub
 
 
 def test_adding_a_real_site_queues_the_crawl_and_returns_at_once(real):
-    c, ctx, h, fake = real
+    c, ctx, h, stub = real
     r = c.post("/api/knowledge/sources", headers=h, json={"kind": "site", "name": "Help", "uri": "https://help.rivera.example.test/"})
-    assert r.status_code == 200 and fake.calls == []  # nothing was fetched inside the request
+    assert r.status_code == 200 and stub.calls == []  # nothing was fetched inside the request
     job = c.get(f"/api/knowledge/crawl/{r.json()['crawl_job_id']}", headers=h).json()
     assert job["status"] == "queued" and job["fetched"] == 0
     from sendora_core.models import Job
@@ -136,18 +136,18 @@ def test_adding_a_real_site_queues_the_crawl_and_returns_at_once(real):
 
 
 def test_the_worker_runs_the_queued_crawl_and_the_status_follows(real):
-    c, ctx, h, fake = real
+    c, ctx, h, stub = real
     jid = c.post("/api/knowledge/sources", headers=h, json={"kind": "site", "name": "Help", "uri": "https://help.rivera.example.test/"}).json()["crawl_job_id"]
     assert Worker(ctx.factory, make_handlers(ctx)).drain() == 1
     job = c.get(f"/api/knowledge/crawl/{jid}", headers=h).json()
-    assert fake.calls == ["https://help.rivera.example.test/"] and job["status"] == "done" and job["fetched"] == 2 and job["skipped"] == 1
+    assert stub.calls == ["https://help.rivera.example.test/"] and job["status"] == "done" and job["fetched"] == 2 and job["skipped"] == 1
     with ctx.factory() as s:
         assert s.query(Document).count() == 2 and s.get(CrawlJob, jid).finished_at is not None
     assert Worker(ctx.factory, make_handlers(ctx)).drain() == 0  # nothing left to run, and a finished job is never crawled twice
 
 
 def test_a_crawl_that_failed_in_the_worker_says_so_without_page_text(real):
-    c, ctx, h, fake = real
+    c, ctx, h, stub = real
 
     class Boom:
         def crawl(self, start):
@@ -161,7 +161,7 @@ def test_a_crawl_that_failed_in_the_worker_says_so_without_page_text(real):
 
 
 def test_a_crawl_interrupted_in_the_worker_is_run_again(real):
-    c, ctx, h, fake = real
+    c, ctx, h, stub = real
     jid = c.post("/api/knowledge/sources", headers=h, json={"kind": "site", "name": "Help", "uri": "https://help.rivera.example.test/"}).json()["crawl_job_id"]
     with ctx.factory() as s:
         s.get(CrawlJob, jid).status = "running"  # the worker died after marking it

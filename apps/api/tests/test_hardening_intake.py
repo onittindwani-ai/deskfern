@@ -12,12 +12,12 @@ from deskfern.adapters.imap import ImapInbox, sender_is_authenticated
 from deskfern.dbsetup import make_private_engine
 from deskfern.models import Customer, Escalation, Message, PolicyAction, State, Ticket
 from deskfern.util import safe_external_id
-from mock.mail_servers import FakeMailServers
+from mock.mail_servers import StubMailServers
 from sendora_core.db import Base, make_engine, make_session_factory, session_scope
 from sendora_core.jobs import Worker
 from sendora_core.models import Job
 from tests.conftest import login, make_ctx
-from tests.hardening_helpers import FakeInbox, attach, load_world_unprocessed, real_ctx, real_settings
+from tests.hardening_helpers import StubInbox, attach, load_world_unprocessed, real_ctx, real_settings
 
 REFUND_TEXT = "Please refund my payment, I was charged by mistake and want my money back."
 
@@ -129,19 +129,19 @@ def test_only_the_top_authentication_header_from_your_own_provider_counts():
     assert sender_is_authenticated(parse("Authentication-Results: mx.provider.test; dmarc=fail\r\n"), "mx.provider.test") is False
     assert sender_is_authenticated(parse("Authentication-Results: mx.provider.test; spf=pass; dkim=pass\r\n"), "mx.provider.test") is False  # no DMARC verdict
     assert sender_is_authenticated(parse("From: x\r\n"), "mx.provider.test") is False
-    # the sender can add a header of their own, but the provider's goes on top: the fake one below it is never read
+    # the sender can add a header of their own, but the provider's goes on top: the forged one below it is never read
     forged = parse("Authentication-Results: mx.provider.test; dmarc=fail\r\nAuthentication-Results: mx.provider.test; dmarc=pass\r\n")
     assert sender_is_authenticated(forged, "mx.provider.test") is False
-    only_fake = parse("Authentication-Results: attacker.test; dmarc=pass\r\n")
-    assert sender_is_authenticated(only_fake, "mx.provider.test") is False
+    only_stub = parse("Authentication-Results: attacker.test; dmarc=pass\r\n")
+    assert sender_is_authenticated(only_stub, "mx.provider.test") is False
 
 
-def test_mail_through_the_fake_server_is_verified_only_with_the_providers_name(tmp_path):
+def test_mail_through_the_stub_server_is_verified_only_with_the_providers_name(tmp_path):
     def mail(results: str) -> bytes:
         m = email.message_from_string(f"{results}From: Dana <dana@example.test>\r\nTo: support@rivera.example.test\r\nSubject: Export\r\nMessage-ID: <m1@example.test>\r\n\r\nHow do I export?\r\n")
         return m.as_bytes()
 
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         srv.store.deliver(mail("Authentication-Results: mx.provider.test; dmarc=pass header.from=example.test\r\n"))
         srv.store.deliver(mail("Authentication-Results: mx.provider.test; dmarc=fail\r\n").replace(b"m1@", b"m2@"))
         base = dict(imap_host=srv.host, imap_port=srv.imap_port, imap_use_ssl=False, smtp_user="demo", smtp_password="demo-password")
@@ -188,7 +188,7 @@ def test_one_message_that_cannot_be_stored_does_not_stop_the_others(world_ctx, m
         return real(session, ctx, inb)
 
     monkeypatch.setattr(desk, "intake_ticket", flaky)
-    inbox = FakeInbox([InboundTicket(f"em-<{n}@x>", "email", "a@b.example.test", "s", "b", ack=str(i)) for i, n in enumerate(["one", "bad", "two"], start=1)])
+    inbox = StubInbox([InboundTicket(f"em-<{n}@x>", "email", "a@b.example.test", "s", "b", ack=str(i)) for i, n in enumerate(["one", "bad", "two"], start=1)])
     attach(world_ctx, inbox=inbox)
     with world_ctx.factory() as s:
         got = desk.fetch_all(s, world_ctx)
@@ -208,7 +208,7 @@ def test_one_source_being_down_does_not_stop_the_other(world_ctx):
         def fetch_new(self):
             raise AdapterError("The helpdesk is down.")
 
-    attach(world_ctx, helpdesk=Down(), inbox=FakeInbox([InboundTicket("em-<ok@x>", "email", "a@b.example.test", "s", "b")]))
+    attach(world_ctx, helpdesk=Down(), inbox=StubInbox([InboundTicket("em-<ok@x>", "email", "a@b.example.test", "s", "b")]))
     with world_ctx.factory() as s:
         got = desk.fetch_all(s, world_ctx)
     assert got["fetched"] == 1 and got["errors"] == ["The helpdesk is down."]
@@ -248,7 +248,7 @@ def run_worker(ctx):
 
 def test_mail_is_marked_read_only_after_the_database_has_it(tmp_path):
     ctx = real_ctx(tmp_path)
-    inbox = FakeInbox([InboundTicket(f"em-<{n}@x>", "email", "a@b.example.test", "s", "b", ack=str(n)) for n in (1, 2)], ctx)
+    inbox = StubInbox([InboundTicket(f"em-<{n}@x>", "email", "a@b.example.test", "s", "b", ack=str(n)) for n in (1, 2)], ctx)
     attach(ctx, inbox=inbox)
     run_worker(ctx)
     assert inbox.seen == ["1", "2"] and inbox.held == 2  # a second connection already saw both tickets when the mail was marked
@@ -260,7 +260,7 @@ def test_mail_is_marked_read_only_after_the_database_has_it(tmp_path):
 
 def test_if_the_job_fails_nothing_is_marked_read_and_the_failure_is_recorded(tmp_path, monkeypatch):
     ctx = real_ctx(tmp_path)
-    inbox = FakeInbox([InboundTicket("em-<a@x>", "email", "a@b.example.test", "s", "b", ack="1")], ctx)
+    inbox = StubInbox([InboundTicket("em-<a@x>", "email", "a@b.example.test", "s", "b", ack="1")], ctx)
     attach(ctx, inbox=inbox)
 
     def boom(session, c):

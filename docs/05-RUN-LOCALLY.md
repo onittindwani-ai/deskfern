@@ -15,7 +15,7 @@
 
 ## Database
 
-- **SQLite** (default): tables are created on start. In demo mode the made up company is loaded when the database is empty. With `DEMO_MODE=false` the database starts empty: add your pages and customers (`10`).
+- **SQLite** (default): tables are created on start. In demo mode the sample company is loaded when the database is empty. With `DEMO_MODE=false` the database starts empty: add your pages and customers (`10`).
 - **Postgres**: set `DATABASE_URL=postgresql+psycopg://user:pass@host:5432/dbname`, then `cd apps/api && ../../.venv/bin/alembic upgrade head`. Do this on every update.
 
 ## Two programs, then the web app

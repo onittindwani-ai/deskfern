@@ -116,7 +116,7 @@ def test_a_drive_list_with_odd_rows_still_gives_the_good_documents(tmp_path):
 
 def test_a_damaged_saved_cursor_starts_over_instead_of_failing_every_run(tmp_path):
     from mock.desk_mocks import ZendeskMock
-    from mock.mail_servers import FakeMailServers
+    from mock.mail_servers import StubMailServers
     from tests.test_round2_lows import mail
     from tests.test_round3_helpdesks import rows, zendesk
     from tests.test_round3_imap import cycle, make
@@ -128,7 +128,7 @@ def test_a_damaged_saved_cursor_starts_over_instead_of_failing_every_run(tmp_pat
     _, z = zendesk(tmp_path, m)
     got = z.fetch_since({"max_id": "abc"})
     assert len(got.tickets) == 3 and got.cursor == {"max_id": 3}
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         srv.store.deliver(mail(1))
         ctx = make(tmp_path, srv)
         with ctx.factory() as s:

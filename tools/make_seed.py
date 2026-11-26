@@ -34,7 +34,7 @@ def write_pdf(path: Path) -> None:
 
     c = canvas.Canvas(str(path), pagesize=A4)
     y = 780
-    c.setTitle("Fieldnote Terms of Service, refunds and credits (fictional)")
+    c.setTitle("Fieldnote Terms of Service, refunds and credits (demo data)")
     for head, body in PDF_CLAUSES:
         text = head if not body else f"{head}  {body}"
         c.setFont("Helvetica-Bold" if not body else "Helvetica", 11)
@@ -45,7 +45,7 @@ def write_pdf(path: Path) -> None:
     c.save()
 
 
-# New tickets the demo brings in one by one when Run now is pressed (docs/01-QUICK-DEMO.md). Fictional, and not part of the 121 scored tickets.
+# New tickets the demo brings in one by one when Run now is pressed (docs/01-QUICK-DEMO.md). Sample, and not part of the 121 scored tickets.
 ARRIVALS = [
     {"id": "N001", "customer": "c16", "subject": "More guests", "body": "Can I invite more than 5 guests to our team workspace, and do guests cost anything?"},
     {"id": "N002", "customer": "c25", "subject": "Refund me please", "body": "I paid for the monthly Team plan about two weeks ago and we do not use it. Please refund me."},
@@ -72,7 +72,7 @@ def main() -> None:
         if "duplicate_of_index" in t:
             t["duplicate_of"] = tickets[t.pop("duplicate_of_index")]["id"]
     customers = [dict(key=k, name=n, email=e, plan=p, interval=i, first_paid=f, last_paid=l, amount_minor=a, refunds_12m=r, flag=fl, seats=s) for k, n, e, p, i, f, l, a, r, fl, s in CUSTOMERS]
-    seed = {"company": {"name": "Fieldnote Software", "note": "fictional"}, "customers": customers,
+    seed = {"company": {"name": "Fieldnote Software", "note": "sample"}, "customers": customers,
             "tickets": [{k: t[k] for k in ("id", "customer", "subject", "body", "age_h")} for t in tickets],
             "documents": sorted(p.name for p in kb.glob("*")), "arrivals": ARRIVALS}
     key = {t["id"]: {k: v for k, v in t.items() if k not in ("body", "subject", "customer", "age_h")} for t in tickets}

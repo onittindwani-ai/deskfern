@@ -1,4 +1,4 @@
-"""Fictional customers of Fieldnote. Names, emails and charges are invented. Dates are relative to the demo start, 2026-12-01."""
+"""Sample customers of Fieldnote. Names, emails and charges are sample data. Dates are relative to the demo start, 2026-12-01."""
 # key, name, email, plan, interval, first_paid, last_paid, amount_minor, refunds_last_12m, flag, seats
 CUSTOMERS = [
  ("c01", "Marisol Ventura", "marisol@riverbend-studio.example.test", "team", "monthly", "2026-11-27", "2026-11-27", 800, 0, "", 5),

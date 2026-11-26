@@ -1,4 +1,4 @@
-"""Score the desk on an independent test set (written by agents who never saw the code).
+"""Score the desk on an independent test set (written by separate AI test authors who never saw the code).
 
 Each set folder holds `kb/*.md` (the only source of truth), `tickets.json`, `key.json` and `groundedness.json`.
 The knowledge pages are loaded into a FRESH database through the desk's own folder ingestion, then:

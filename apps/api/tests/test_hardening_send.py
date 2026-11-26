@@ -14,7 +14,7 @@ from deskfern.adapters.seed import SeedEmail, SeedHelpdesk, SeedPayments
 from deskfern.api.app import create_app
 from deskfern.models import Customer, Message, PolicyAction, Ticket
 from mock.desk_mocks import ChatwootMock, IntercomMock
-from mock.mail_servers import FakeMailServers
+from mock.mail_servers import StubMailServers
 from sendora_core.adapters import AdapterError
 from sendora_core.auth import hash_password
 from sendora_core.models import AuditEntry
@@ -26,7 +26,7 @@ ANSWERABLE = "How do I export my notes to a file?"
 
 @pytest.fixture()
 def live(tmp_path):
-    """A real install in live mode with recording adapters, one owner and one approver, and the fictional help pages as its knowledge."""
+    """A real install in live mode with recording adapters, one owner and one approver, and the sample help pages as its knowledge."""
     s = real_settings(tmp_path, mode="live", email_adapter="smtp", smtp_host="smtp.rivera.example.test", approver_email=APPROVER, approver_password_hash=hash_password(PASSWORD), seed_dir="", knowledge_dir="")
     app = create_app(s)
     ctx = app.state.ctx
@@ -38,7 +38,7 @@ def live(tmp_path):
     from deskfern import search
     from deskfern.models import Source
 
-    with ctx.factory() as db:  # the help pages of the fictional company stand in for the client's own
+    with ctx.factory() as db:  # the help pages of the sample company stand in for the client's own
         desk_root = Path(__file__).resolve().parents[3] / "data"
         src = Source(kind="folder", name="Help centre", uri="knowledge folder", status="ready")
         db.add(src)
@@ -219,8 +219,8 @@ def test_a_crafted_email_id_never_reaches_a_helpdesk_request():
 
 # ---- the real SMTP path: verified TLS, and plain text only to this computer ----
 
-def test_a_reply_goes_out_through_the_fake_smtp_server_with_the_thread_header(tmp_path):
-    with FakeMailServers() as srv:
+def test_a_reply_goes_out_through_the_stub_smtp_server_with_the_thread_header(tmp_path):
+    with StubMailServers() as srv:
         s = real_settings(tmp_path, mode="live", smtp_host=srv.host, smtp_port=srv.smtp_port, smtp_use_tls=False, smtp_user="demo", smtp_password="demo-password")
         SmtpSender(s).send(from_addr="support@rivera.example.test", to="dana@example.test", subject="Re: Export", body="Hi", in_reply_to="<abc@example.test>")
         SmtpSender(s).send(from_addr="support@rivera.example.test", to="dana@example.test", subject="Re: Export", body="Hi", in_reply_to="<abc@x>\r\nBcc: evil@example.test")

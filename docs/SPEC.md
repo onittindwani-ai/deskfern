@@ -1,6 +1,6 @@
 # Deskfern spec (step 1)
 
-Deskfern is a support and success desk for one client business, run by an implementer. It reads the client's own knowledge (help pages, policies, changelog, PDFs), drafts cited answers to tickets, checks that every sentence is supported by the cited text, escalates what it cannot support, routes refunds through a person, learns from agent edits and shows which questions have no source. Single tenant. Fictional demo company: Fieldnote Software (a team notes app). All people, prices and policies in the seed are invented.
+Deskfern is a support and success desk for one client business, run by an implementer. It reads the client's own knowledge (help pages, policies, changelog, PDFs), drafts cited answers to tickets, checks that every sentence is supported by the cited text, escalates what it cannot support, routes refunds through a person, learns from agent edits and shows which questions have no source. Single tenant. Sample demo company: Fieldnote Software (a team notes app). All people, prices and policies in the seed are sample data.
 
 ## Entities (table prefix `lh_`)
 Customer, Source, Document, Chunk, Ticket, TicketMessage, Answer (a draft with sentences), Citation (one per sentence per chunk), Escalation, PolicyRule, PolicyAction, HealthScore, Gap, TestCase, CrawlJob, EvalRun, State.
@@ -22,7 +22,7 @@ Never invents policy. A refund always needs approval and the requester cannot ap
 ingest, intake, answer, gaps, health. One worker, database job table.
 
 ## Adapters
-Chatwoot A (mock), email IMAP A (fake server), local folder A, seed desk A, Intercom B, Zendesk B, Freshdesk B, Stripe refunds B, Google Drive B, Notion B, site crawl A (local test server).
+Chatwoot A (mock), email IMAP A (mock server), local folder A, seed desk A, Intercom B, Zendesk B, Freshdesk B, Stripe refunds B, Google Drive B, Notion B, site crawl A (local test server).
 
 ## Evals
 Answer set with key on the seed KB; HELD OUT set of 60+ questions written before the retrieval design; groundedness checker against hand labelled sentences (precision and recall); escalation precision and recall; refusal on out of scope; citation validity 100 percent (code check).

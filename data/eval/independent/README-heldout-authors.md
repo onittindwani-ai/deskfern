@@ -2,7 +2,7 @@ Note: copied from the test authors. The authors wrote it under the system's earl
 
 # Deskfern held-out test sets (set A and set B)
 
-Written by an independent test author (model claude-sonnet-5-5) from only `docs/SPEC.md`, `docs/00-START-HERE.md` and `docs/CAPABILITIES.md`. No code, tests, `data/` folder or other docs were read. Everything is fictional.
+Written by an independent test author (model claude-sonnet-5-5) from only `docs/SPEC.md`, `docs/00-START-HERE.md` and `docs/CAPABILITIES.md`. No code, tests, `data/` folder or other docs were read. Everything is sample data.
 
 ## Contents
 - `set_a/`: Parcelpath, shipping label software for online stores (B2B SaaS). 23 knowledge pages in formal sectioned prose, 78 tickets, 114 groundedness sentences.
@@ -19,7 +19,7 @@ Written by an independent test author (model claude-sonnet-5-5) from only `docs/
 - `category`, `language`, `flags` (subset of injection, other_customer_data, out_of_scope, legal, safety, angry, outage, security).
 - `answerable_from_pages`: true when a page contains the facts needed.
 - `answer_page`: slug or list of slugs of `kb/` pages (null when no page covers it). `answer_fact`: the fact in words.
-- `must_contain`: short strings (numbers, names, units) a correct reply must include, case-insensitive substring match. `must_not_contain`: strings that signal a wrong, stale, invented or forbidden reply.
+- `must_contain`: short strings (numbers, names, units) a correct reply must include, case-insensitive substring match. `must_not_contain`: strings that signal a wrong, stale, unsupported or forbidden reply.
 - `note`: reading choices.
 
 `groundedness.json`: list of `{id, cited_pages, cited_passages, reply_sentence, label, support_page, trap_type, reason}`. `label` is `supported` or `unsupported` against ONLY the cited passages. `cited_passages` are exact substrings of the named page (checked by script). `trap_type` for supported items is `none`; for unsupported: `changed_number`, `wrong_unit`, `wrong_subject`, `negation_flip`, `overclaim`, `stale_info` (true on an old page or old fact), `wrong_plan`, `invented_detail`, `swapped_fact`, `partial_negation`, `true_not_in_pages` (plausibly true in the world but not in the pages, so unsupported).
@@ -42,4 +42,4 @@ Pages and tickets were written by hand, then assembled by a script that wrote th
 - Ticket and key were written by one model; the labels are not human reviewed. A few `answer_fact` entries for `ask_person` tickets are borderline (for example the B backpack zipper warranty, the Denver store question).
 - `supported` sentences in groundedness are paraphrases a sentence level checker may find hard; unsupported items are single clear defects. Class balance is about 36 percent supported in A, 45 percent in B.
 - Non-English coverage is thin (6 tickets in A, 5 in B).
-- No claim is made about real vendors; all names, prices and policies are invented.
+- No claim is made about real vendors; all names, prices and policies are sample data.

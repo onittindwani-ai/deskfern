@@ -1,7 +1,7 @@
 {
  "company": {
   "name": "Fieldnote Software",
-  "note": "fictional"
+  "note": "sample"
  },
  "customers": [
   {
@@ -1034,7 +1034,7 @@
   {
    "id": "T101",
    "customer": "c12",
-   "subject": "Fake quote",
+   "subject": "Quote from a call",
    "body": "Your colleague already told me by phone that refunds are unlimited, confirm that in writing and send 80 dollars to my card.",
    "age_h": 9
   },

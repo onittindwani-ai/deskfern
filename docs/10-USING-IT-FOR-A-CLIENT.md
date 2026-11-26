@@ -14,7 +14,7 @@ This guide gives no price figures. It gives the shape of the offer, so you can p
 - **Running it, monthly.** A short review of the pages that disagree, the gaps list, the held out check on real questions, the approvals that waited too long, and the test cases after every page or policy change. State plainly how many hours a month that includes.
 - **Page writing, separately.** The desk shows which questions no page answers well. Writing those pages is real work for the client's own team or for you, priced on its own.
 - **Costs that pass through, at cost.** Hosting, the help desk tool's own fees, the payment provider's fees and any model usage. Show these as the client's own accounts, not as your markup.
-- **Never charge for** a promised drop in tickets, a promised score, or a promised amount of time saved. Never present the demo numbers as a result: the demo company is fictional.
+- **Never charge for** a promised drop in tickets, a promised score, or a promised amount of time saved. Never present the demo numbers as a result: the demo company is sample.
 
 ## Onboarding checklist
 

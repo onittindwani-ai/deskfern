@@ -1,4 +1,4 @@
-"""A tiny fake SMTP and IMAP server for tests and the demo. Not a real mail server.
+"""A tiny mock SMTP and IMAP server for tests and the demo. Not a real mail server.
 
 SMTP: EHLO, AUTH PLAIN, MAIL, RCPT, DATA, RSET, NOOP, QUIT. Accepted messages land in `MailStore.outbox`.
 IMAP: CAPABILITY, LOGIN, SELECT (says its UIDVALIDITY), UID SEARCH (ALL, UNSEEN, UID a:b or a:*), UID FETCH (RFC822, RFC822.SIZE, BODYSTRUCTURE, and BODY.PEEK of the whole message,
@@ -91,7 +91,7 @@ class _SMTP(socketserver.StreamRequestHandler):
         self.wfile.flush()
 
     def handle(self) -> None:
-        self._w("220 fake-smtp ready")
+        self._w("220 stub-smtp ready")
         mail_from, rcpts = "", []
         while True:
             line = self.rfile.readline().decode(errors="replace").rstrip("\r\n")
@@ -99,7 +99,7 @@ class _SMTP(socketserver.StreamRequestHandler):
                 return
             cmd = line.split(" ", 1)[0].upper()
             if cmd in ("EHLO", "HELO"):
-                self.wfile.write(b"250-fake-smtp\r\n250 AUTH PLAIN\r\n")
+                self.wfile.write(b"250-stub-smtp\r\n250 AUTH PLAIN\r\n")
                 self.wfile.flush()
             elif cmd == "AUTH":
                 self._w("235 ok")
@@ -137,7 +137,7 @@ class _IMAP(socketserver.StreamRequestHandler):
         self.wfile.flush()
 
     def handle(self) -> None:
-        self._w(b"* OK fake-imap ready\r\n")
+        self._w(b"* OK stub-imap ready\r\n")
         authed = False
         while True:
             raw = self.rfile.readline().decode(errors="replace").strip()
@@ -217,7 +217,7 @@ class _Server(socketserver.ThreadingTCPServer):
     daemon_threads = True
 
 
-class FakeMailServers:
+class StubMailServers:
     """Starts both servers on free local ports. Use as a context manager."""
 
     def __init__(self, store: MailStore | None = None, host: str = "127.0.0.1", smtp_port: int = 0, imap_port: int = 0):
@@ -229,7 +229,7 @@ class FakeMailServers:
         self.smtp_port, self.imap_port = self._smtp.server_address[1], self._imap.server_address[1]
         self._threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in (self._smtp, self._imap)]
 
-    def __enter__(self) -> FakeMailServers:
+    def __enter__(self) -> StubMailServers:
         for t in self._threads:
             t.start()
         return self
@@ -241,6 +241,6 @@ class FakeMailServers:
 
 
 if __name__ == "__main__":  # python -m mock.mail_servers
-    with FakeMailServers(smtp_port=2525, imap_port=1143) as srv:
-        print(f"fake smtp on {srv.smtp_port}, fake imap on {srv.imap_port} (user demo, password demo-password). Ctrl C to stop.")
+    with StubMailServers(smtp_port=2525, imap_port=1143) as srv:
+        print(f"stub smtp on {srv.smtp_port}, stub imap on {srv.imap_port} (user demo, password demo-password). Ctrl C to stop.")
         threading.Event().wait()

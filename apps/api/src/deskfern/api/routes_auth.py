@@ -28,7 +28,7 @@ def _forwarded(request: Request) -> str:
 
 
 def _accounts(ctx: Ctx) -> dict[str, tuple[str | None, str]]:
-    """Who may sign in. The made up approver and viewer accounts exist only while demo shortcuts are on, never next to a real owner password."""
+    """Who may sign in. The sample approver and viewer accounts exist only while demo shortcuts are on, never next to a real owner password."""
     s = ctx.settings
     out = {clean_email(s.owner_email): (s.owner_password_hash, "owner")}
     if s.approver_email:

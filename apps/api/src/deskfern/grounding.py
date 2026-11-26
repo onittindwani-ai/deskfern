@@ -22,7 +22,7 @@ from deskfern.textproc import digitize, has_negation, numbers, split_sentences, 
 
 THRESHOLD = 0.65
 GRAY_MIN = 0.45  # between this and THRESHOLD (hard checks passed) a sentence is a case a model judge may look at
-OOV_W = 6.0  # a word the knowledge never uses is a strong sign of an invented claim
+OOV_W = 6.0  # a word the knowledge never uses is a strong sign of a claim the pages do not support
 SYN = {"valid": "work", "stay": "keep", "remain": "keep", "retain": "keep", "receive": "get", "obtain": "get", "limit": "max", "maximum": "max", "largest": "max", "biggest": "max", "up": "", "reach": "keep", "back": "", "every": "each",
        "available": "offer", "pay": "paid", "cost": "price", "charge": "price", "retry": "again", "tried": "again", "try": "again", "need": "", "may": "can", "able": "can", "allow": "can", "yearly": "year", "monthly": "month", "annual": "year", "switch": "turn", "switched": "turn", "mention": "mention"}
 

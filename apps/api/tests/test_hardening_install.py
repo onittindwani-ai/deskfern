@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from deskfern import admin, jobs
 from deskfern.api.app import create_app
 from deskfern.models import Customer, Document, Source
-from mock.mail_servers import FakeMailServers
+from mock.mail_servers import StubMailServers
 from sendora_core.jobs import Worker
 from tests.hardening_helpers import login, real_settings
 
@@ -42,7 +42,7 @@ def drain(ctx) -> None:
 
 
 def test_a_fresh_non_demo_install_works_from_the_help_pages_to_a_sent_reply(tmp_path):
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         s = real_settings(
             tmp_path, mode="live", seed_dir="", knowledge_dir=str(help_folder(tmp_path)), inbox_adapter="imap", email_adapter="smtp", inbound_authserv_id="mx.provider.test",
             imap_host=srv.host, imap_port=srv.imap_port, imap_use_ssl=False, smtp_host=srv.host, smtp_port=srv.smtp_port, smtp_use_tls=False, smtp_user="demo", smtp_password="demo-password",
@@ -51,7 +51,7 @@ def test_a_fresh_non_demo_install_works_from_the_help_pages_to_a_sent_reply(tmp_
         app = create_app(s)
         ctx = app.state.ctx
         with ctx.factory() as db:
-            assert db.scalar(select(func.count(Customer.id))) == 0 and db.scalar(select(func.count(Document.id))) == 0  # nothing fictional was loaded
+            assert db.scalar(select(func.count(Customer.id))) == 0 and db.scalar(select(func.count(Document.id))) == 0  # nothing sample was loaded
         c = TestClient(app, base_url="http://api.test")
         h = login(c)
 
@@ -82,7 +82,7 @@ def test_a_fresh_non_demo_install_works_from_the_help_pages_to_a_sent_reply(tmp_
 
 
 def test_the_same_mail_without_the_providers_name_is_not_matched_to_the_customer(tmp_path):
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         s = real_settings(tmp_path, seed_dir="", knowledge_dir=str(help_folder(tmp_path)), inbox_adapter="imap", imap_host=srv.host, imap_port=srv.imap_port, imap_use_ssl=False, smtp_user="demo", smtp_password="demo-password")
         app = create_app(s)
         c = TestClient(app, base_url="http://api.test")

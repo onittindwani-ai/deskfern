@@ -1,4 +1,4 @@
-"""The fictional knowledge base of Fieldnote Software (a team notes app). Every fact here is invented.
+"""The sample knowledge base of Fieldnote Software (a team notes app). Every fact here is sample data.
 
 Each entry: id, title, updated (ISO date), kind, sections [(heading, text)].
 Two pairs disagree on purpose: billing-faq vs refund-policy (resolvable: the newer article and the changelog win) and

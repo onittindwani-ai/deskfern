@@ -30,7 +30,7 @@ Precision is how often a sentence it accepted was really supported. Recall is ho
 
 ## Independent sets
 
-Two larger sets written by other people who never saw the code, with the first run kept untouched, are reported in `INDEPENDENT-EVAL.md`.
+Two larger sets written by separate AI test authors who never saw the code, with the first run kept untouched, are reported in `INDEPENDENT-EVAL.md`.
 
 ## Run it on your own pages
 

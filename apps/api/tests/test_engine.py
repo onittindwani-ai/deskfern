@@ -172,7 +172,7 @@ def test_live_mode_pays_once_and_the_kill_switch_stops_it(tmp_path):
     from deskfern import search
 
     with c.factory() as s:
-        desk.load_world(s, c)  # the fictional world on a non demo install (demo.reset itself refuses there, see test_hardening_auth)
+        desk.load_world(s, c)  # the sample world on a non demo install (demo.reset itself refuses there, see test_hardening_auth)
         search.rebuild(s)
         desk.process_new(s, c)
         act = s.scalars(select(PolicyAction).where(PolicyAction.status == "requested")).first()
@@ -199,7 +199,7 @@ def test_an_edit_becomes_a_regression_test_case(world):
 
 
 class Perturbing:
-    """A writer that adds an invented sentence, like a model might."""
+    """A writer that adds an extra sentence the pages do not support, like a model might."""
 
     def write(self, question, passages, terms):
         base = answering.RulesWriter().write(question, passages, terms)
@@ -213,11 +213,11 @@ def test_unsupported_sentences_are_removed_and_all_unsupported_escalates(world):
         d = answering.draft_for(s, world, t, tri, Perturbing())
         assert any(x.removed for x in d.sentences) and "discount" not in d.text and d.outcome == "answer"
 
-        class OnlyInvented:
+        class OnlyExtra:
             def write(self, q, p, terms):
                 return [("Refunds are always paid automatically within one hour.", p[0][0])]
 
-        d2 = answering.draft_for(s, world, t, tri, OnlyInvented())
+        d2 = answering.draft_for(s, world, t, tri, OnlyExtra())
         assert d2.outcome == "escalate" and all(x.removed for x in d2.sentences if x.kind == "fact")
 
 

@@ -1,7 +1,7 @@
 """Draft an answer to a ticket: search, pick sentences, cite, check every sentence, and decide whether to answer, refuse or escalate.
 
 The offline writer copies the best sentences from the sources (an extractive stand in, NOT a language model). A live model writer (`model_tasks.ModelWriter`, LLM_BACKEND=anthropic) plugs into the same `Writer`
-interface (UNVERIFIED live: only run against a local fake server). Whatever writes the sentences, the groundedness check judges them and unsupported ones are removed.
+interface (UNVERIFIED live: only run against a local mock server). Whatever writes the sentences, the groundedness check judges them and unsupported ones are removed.
 """
 
 from __future__ import annotations

@@ -31,7 +31,7 @@ def reset(s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_ctx
 
 @router.post("/tick", summary="Run every job once, now")
 def tick(s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_ctx), u: dict = Depends(writer)):
-    arrived = desk.demo_arrival(s, ctx)  # one new fictional ticket per press, until the demo inbox is empty
+    arrived = desk.demo_arrival(s, ctx)  # one new sample ticket per press, until the demo inbox is empty
     return {**run_cycle(s, ctx), "arrived": arrived}
 
 
@@ -48,11 +48,11 @@ class StressIn(BaseModel):
     n: int = Field(ge=1, le=20000)
 
 
-@router.post("/stress-tickets", summary="Add many fictional tickets, to check that long tables stay fast")
+@router.post("/stress-tickets", summary="Add many sample tickets, to check that long tables stay fast")
 def stress(b: StressIn, s: Session = Depends(db, scope="function"), ctx: Ctx = Depends(get_ctx), u: dict = Depends(owner)):
     from deskfern.models import Ticket
 
     now = ctx.now(s)
-    s.bulk_insert_mappings(Ticket, [{"external_id": f"STRESS-{i:05d}", "channel": "seed", "requester_email": f"load{i}@example.test", "subject": f"Fictional load ticket {i}", "status": "closed", "category": "other", "urgency": "low", "sentiment": "neutral", "language": "en",
+    s.bulk_insert_mappings(Ticket, [{"external_id": f"STRESS-{i:05d}", "channel": "seed", "requester_email": f"load{i}@example.test", "subject": f"Sample load ticket {i}", "status": "closed", "category": "other", "urgency": "low", "sentiment": "neutral", "language": "en",
                                      "flags": [], "outcome": "answer", "created_at": now - timedelta(minutes=i)} for i in range(b.n)])
     return {"added": b.n}

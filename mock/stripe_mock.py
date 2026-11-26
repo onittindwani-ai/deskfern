@@ -1,4 +1,4 @@
-"""Fake Stripe payment link API (POST /v1/payment_links), written from the public API reference. A payment link is a web page where a customer pays. Nothing here moves money."""
+"""Mock Stripe payment link API (POST /v1/payment_links), written from the public API reference. A payment link is a web page where a customer pays. Nothing here moves money."""
 
 from __future__ import annotations
 

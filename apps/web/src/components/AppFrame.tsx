@@ -113,7 +113,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
       ) : s?.effective_mode === "draft" ? (
         <div className="lh-banner" role="status"><strong>Draft mode.</strong> <span className="lh-grow lh-hide-sm">Nothing is sent to customers and no refund is paid. Drafts are saved.</span>{needs}{demoBar}</div>
       ) : s && demo ? (
-        <div className="lh-banner lh-banner--info" role="status"><strong>Demo mode.</strong> <span className="lh-grow lh-hide-sm">Fictional company and tickets. A rules based stand in writes the drafts, not a language model.</span>{needs}{demoBar}</div>
+        <div className="lh-banner lh-banner--info" role="status"><strong>Demo mode.</strong> <span className="lh-grow lh-hide-sm">Sample company and tickets. A rules based stand in writes the drafts, not a language model.</span>{needs}{demoBar}</div>
       ) : s ? (
         <div className="lh-banner lh-banner--live" role="status"><strong>Live.</strong> <span className="lh-hide-sm">An agent sends every reply. Refunds run only after another person approves.</span>{needs}</div>
       ) : (
@@ -138,7 +138,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
       </AppShell>
       <CommandPalette items={items} open={palette} onOpenChange={setPalette} />
       <ConfirmDialog open={confirmKill} onOpenChange={setConfirmKill} title="Pause everything?" description="The kill switch stops every reply and every refund at once. You can turn it off again from the banner or the top bar." confirmLabel="Pause all" destructive onConfirm={() => void toggleKill.mutateAsync(true)} />
-      <ConfirmDialog open={confirmReset} onOpenChange={setConfirmReset} title="Reset the demo?" description="This puts the fictional seed data back and clears everything you did in the demo." confirmLabel="Reset" destructive onConfirm={() => void reset.mutateAsync()} />
+      <ConfirmDialog open={confirmReset} onOpenChange={setConfirmReset} title="Reset the demo?" description="This puts the sample seed data back and clears everything you did in the demo." confirmLabel="Reset" destructive onConfirm={() => void reset.mutateAsync()} />
     </>
   );
 }

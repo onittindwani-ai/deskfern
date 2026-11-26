@@ -1,4 +1,4 @@
-"""Fake Google Drive and Notion servers (read only), and a fake help site for the crawler. Shapes from memory of public docs, UNVERIFIED live."""
+"""Mock Google Drive and Notion servers (read only), and a mock help site for the crawler. Shapes from memory of public docs, UNVERIFIED live."""
 
 from __future__ import annotations
 

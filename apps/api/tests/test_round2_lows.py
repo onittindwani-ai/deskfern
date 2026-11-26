@@ -14,7 +14,7 @@ from deskfern.adapters.helpdesks import MAX_PAGES, FreshdeskHelpdesk, IntercomHe
 from deskfern.adapters.imap import ImapInbox
 from deskfern.models import Customer, Ticket
 from mock.desk_mocks import FreshdeskMock, IntercomMock, ZendeskMock
-from mock.mail_servers import FakeMailServers
+from mock.mail_servers import StubMailServers
 from tests.conftest import login, make_ctx
 from tests.hardening_helpers import real_settings
 
@@ -91,7 +91,7 @@ def inbox_settings(tmp_path, srv):
 
 
 def test_one_run_takes_at_most_the_cap_and_the_rest_stay_unread_for_the_next(tmp_path):
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         for n in range(imap.MAX_PER_RUN + 20):
             srv.store.deliver(mail(n))
         box = ImapInbox(inbox_settings(tmp_path, srv))
@@ -104,7 +104,7 @@ def test_one_run_takes_at_most_the_cap_and_the_rest_stay_unread_for_the_next(tmp
 
 def test_a_huge_message_is_left_unread_without_being_downloaded_and_does_not_block_the_rest(tmp_path, monkeypatch):
     monkeypatch.setattr(imap, "MAX_MESSAGE_BYTES", 5_000)
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         for n in range(imap.MAX_PER_RUN + 5):
             srv.store.deliver(mail(1000 + n, pad=2000))  # every one of these is over the limit
         srv.store.deliver(mail(1, "How do I export my notes?"))
@@ -132,7 +132,7 @@ def test_a_huge_message_is_left_unread_without_being_downloaded_and_does_not_blo
 
 def test_a_mail_with_only_an_html_part_gives_the_ticket_its_words(tmp_path):
     html = "<html><head><style>p{color:red}</style><title>t</title></head><body><script>alert(1)</script><p>How do I <b>export</b> my notes?</p><p>Thanks &amp; regards</p></body></html>"
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         srv.store.deliver(mail(7, html=html))
         got = ImapInbox(inbox_settings(tmp_path, srv)).fetch_tickets()
     body = got[0].body
@@ -140,7 +140,7 @@ def test_a_mail_with_only_an_html_part_gives_the_ticket_its_words(tmp_path):
 
 
 def test_a_mail_with_plain_text_keeps_it(tmp_path):
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         srv.store.deliver(mail(8))
         assert ImapInbox(inbox_settings(tmp_path, srv)).fetch_tickets()[0].body.strip() == "How do I export my notes?"
 

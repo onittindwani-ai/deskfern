@@ -1,4 +1,4 @@
-"""Fake help desk servers: Chatwoot (send message), Intercom, Zendesk, Freshdesk. Shapes follow public docs from memory except the Chatwoot webhook signature (read from the vendor help article). Tier B vendors are UNVERIFIED live."""
+"""Mock help desk servers: Chatwoot (send message), Intercom, Zendesk, Freshdesk. Shapes follow public docs from memory except the Chatwoot webhook signature (read from the vendor help article). Tier B vendors are UNVERIFIED live."""
 
 from __future__ import annotations
 

@@ -431,7 +431,7 @@ def intake_warnings(session: Session, now=None) -> list[str]:
 
 
 def demo_arrival(session: Session, ctx) -> str | None:
-    """Demo only: each Run now brings in the next fictional new ticket from the seed file, so the button has something to do. Returns its subject, or None when none are left."""
+    """Demo only: each Run now brings in the next sample new ticket from the seed file, so the button has something to do. Returns its subject, or None when none are left."""
     from deskfern.models import State
 
     try:
@@ -602,10 +602,10 @@ def capture_edit(session: Session, t: Ticket, ans: Answer, edited: str) -> TestC
 
 
 def run_test_case(session: Session, ctx, tc: TestCase) -> bool:
-    fake = Ticket(external_id=f"test-{tc.id}", subject=tc.question[:100], created_at=ctx.now(session))
-    fake.messages = [Message(direction="in", body=tc.question)]
-    tri = triage.triage(fake.subject, tc.question)
-    d = answering.draft_for(session, ctx, fake, tri)
+    stub = Ticket(external_id=f"test-{tc.id}", subject=tc.question[:100], created_at=ctx.now(session))
+    stub.messages = [Message(direction="in", body=tc.question)]
+    tri = triage.triage(stub.subject, tc.question)
+    d = answering.draft_for(session, ctx, stub, tri)
     low = d.text.lower()
     docs = {session.get(answering.Chunk, cid).document.slug for cid in d.chunk_ids}
     missing = [f for f in tc.expected_facts if f not in low]

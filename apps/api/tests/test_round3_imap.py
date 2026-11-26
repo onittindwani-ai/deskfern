@@ -15,7 +15,7 @@ from deskfern.api.app import create_app
 from deskfern.context import Ctx
 from deskfern.dbsetup import make_private_engine
 from deskfern.models import State, Ticket
-from mock.mail_servers import FakeMailServers
+from mock.mail_servers import StubMailServers
 from sendora_core.adapters import AdapterError
 from sendora_core.db import Base, make_session_factory
 from tests.hardening_helpers import login, real_settings
@@ -61,7 +61,7 @@ def cursor(ctx) -> dict:
 
 
 def test_mail_a_person_opened_before_the_run_is_still_taken_in(tmp_path):
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         srv.store.deliver(mail(1))
         assert cycle(ctx)["fetched"] == 1
@@ -78,7 +78,7 @@ def test_a_mailbox_that_cannot_be_marked_read_does_not_starve_new_mail(tmp_path,
         raise AdapterError("The inbox rejected the command.")
 
     monkeypatch.setattr(ImapInbox, "mark_seen", refuse)  # read only credentials: nothing is ever marked
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         for n in range(120):
             srv.store.deliver(mail(n))
@@ -90,7 +90,7 @@ def test_a_mailbox_that_cannot_be_marked_read_does_not_starve_new_mail(tmp_path,
 
 
 def test_the_first_run_takes_the_mail_that_is_unread_now_and_never_the_old_read_mail(tmp_path):
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         for n in range(120):
             srv.store.deliver(mail(n))
@@ -106,7 +106,7 @@ def test_the_first_run_takes_the_mail_that_is_unread_now_and_never_the_old_read_
 
 
 def test_an_empty_mailbox_on_the_first_run_then_new_mail(tmp_path):
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         assert cycle(ctx)["fetched"] == 0
         srv.store.deliver(mail(1))
@@ -114,7 +114,7 @@ def test_an_empty_mailbox_on_the_first_run_then_new_mail(tmp_path):
 
 
 def test_a_renumbered_mailbox_is_read_again_without_making_second_tickets(tmp_path):
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         for n in range(3):
             srv.store.deliver(mail(n))
@@ -131,7 +131,7 @@ def test_a_renumbered_mailbox_is_read_again_without_making_second_tickets(tmp_pa
 
 def test_a_message_that_is_too_large_is_reported_and_never_blocks_the_mail_behind_it(tmp_path, monkeypatch):
     monkeypatch.setattr(imap, "MAX_MESSAGE_BYTES", 5_000)
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         srv.store.deliver(mail(1, pad=2000))
         srv.store.deliver(mail(2))
@@ -142,7 +142,7 @@ def test_a_message_that_is_too_large_is_reported_and_never_blocks_the_mail_behin
 
 
 def test_the_cursor_moves_only_when_the_tickets_are_committed(tmp_path):
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         for n in range(3):
             srv.store.deliver(mail(n))
@@ -159,7 +159,7 @@ def test_repeated_failures_to_mark_mail_read_are_shown_and_clear_by_themselves(t
 
     real_mark = ImapInbox.mark_seen
     monkeypatch.setattr(ImapInbox, "mark_seen", refuse)
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         app = create_app(ctx.settings, ctx)
         c = TestClient(app, base_url="http://api.test")
@@ -177,7 +177,7 @@ def test_repeated_failures_to_mark_mail_read_are_shown_and_clear_by_themselves(t
 
 
 def test_the_cursor_and_the_flags_are_read_with_peek_only(tmp_path):
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         srv.store.deliver(mail(1))
         batch = ImapInbox(ctx.settings).fetch_since({})
@@ -213,7 +213,7 @@ def fail_subject(monkeypatch, subject, times):
 
 def test_a_message_that_fails_to_save_is_read_again_and_arrives_once_the_save_works(tmp_path, monkeypatch):
     fail_subject(monkeypatch, "Question 1", 2)
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         for n in range(3):
             srv.store.deliver(mail(n))
@@ -228,7 +228,7 @@ def test_a_message_that_fails_to_save_is_read_again_and_arrives_once_the_save_wo
 
 def test_a_message_that_never_saves_is_named_and_stops_holding_up_the_rest(tmp_path, monkeypatch):
     fail_subject(monkeypatch, "Question 1", 99)
-    with FakeMailServers() as srv:
+    with StubMailServers() as srv:
         ctx = make(tmp_path, srv)
         for n in range(3):
             srv.store.deliver(mail(n))
