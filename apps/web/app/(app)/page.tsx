@@ -34,7 +34,7 @@ export default function QueuePage() {
     { key: "urgency", header: "Urgency", width: "100px", render: (r) => <Badge tone={r.urgency === "urgent" ? "danger" : r.urgency === "high" ? "warning" : "neutral"}>{r.urgency}</Badge>, sortValue: (r) => r.urgency },
     { key: "outcome", header: "Draft", width: "190px", render: (r) => { const o = OUT[r.outcome]; return o ? <Badge tone={o.tone}>{o.label}</Badge> : <Badge>New</Badge>; }, sortValue: (r) => r.outcome },
     { key: "conf", header: "Confidence", width: "110px", align: "right", render: (r) => (r.confidence === null ? "" : `${Math.round(r.confidence * 100)}`), sortValue: (r) => r.confidence ?? -1 },
-    { key: "flags", header: "Flags", width: "1fr", render: (r) => <span className="sx-row">{r.flags.filter((f) => ["injection", "angry", "other_customer_data", "needs_person"].includes(f)).map((f) => <Badge key={f} tone="warning">{flagLabel(f)}</Badge>)}</span> },
+    { key: "flags", header: "Flags", width: "1fr", render: (r) => <span className="sx-row">{r.flags.filter((f) => ["injection", "angry", "other_customer_data", "needs_person", "unverified_sender", "erased_sender", "too_large", "unreadable", "unstorable"].includes(f)).map((f) => <Badge key={f} tone="warning">{flagLabel(f)}</Badge>)}</span> },
   ];
   const o = ov.data;
   const num = (v: number | undefined) => v ?? 0;
@@ -48,6 +48,7 @@ export default function QueuePage() {
           <Card><Stat label="Answered with citations" value={num(o?.deflection_pct)} format={(n) => `${Math.round(n)}%`} note="of all tickets" /></Card>
           <Card><Stat label="Waiting for approval" value={num(o?.pending_approvals)} /></Card>
         </div>)}
+      {o?.intake_notes?.length ? <Card title="Needs attention"><ul className="lh-steps" role="status">{o.intake_notes.map((n) => <li key={n}>{n}</li>)}</ul></Card> : null}
       <div className="lh-toolbar">
         <SegmentedControl<View> label="Show" value={view} onChange={setView} options={[{ value: "open", label: "Open" }, { value: "escalated", label: "Needs a person" }, { value: "awaiting_approval", label: "Refunds" }, { value: "answered", label: "Answered" }, { value: "all", label: "All" }]} />
         <Field label="Search tickets" value={q} onChange={setQ} clearable placeholder="Subject or customer" />

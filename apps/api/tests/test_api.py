@@ -29,13 +29,14 @@ def test_queue_detail_and_source_viewer(client):
     assert c["document_text"][lo:hi].split()[0] == c["quote"].split()[0]  # the highlight lands on the quoted passage
 
 
-def test_reply_in_draft_mode_records_but_sends_nothing_and_an_edit_makes_a_case(client):
+def test_reply_in_draft_mode_is_held_sends_nothing_keeps_the_ticket_open_and_an_edit_makes_a_case(client):
     h = login(client)
     t = next(r for r in client.get("/api/tickets?status=open", headers=h).json() if r["outcome"] == "answer")
     r = client.post(f"/api/tickets/{t['id']}/reply", headers=h, json={"text": "A different, edited answer for you."})
-    assert r.status_code == 200 and r.json() == {"sent": False, "recorded": True, "edited": True}
+    assert r.status_code == 200 and r.json() == {"sent": False, "held": True, "edited": True, "reason": "draft mode is on"}
     assert any(c["ticket_id"] == t["id"] for c in client.get("/api/testcases", headers=h).json())
-    assert client.get(f"/api/tickets/{t['id']}", headers=h).json()["status"] == "answered"
+    d = client.get(f"/api/tickets/{t['id']}", headers=h).json()  # changed in round 2: a held reply used to mark the ticket answered and stop the reply clock though the customer got nothing
+    assert d["status"] != "answered" and d["answer"]["status"] == "held" and any("Reply held" in m["body"] for m in d["messages"] if m["direction"] == "note")
 
 
 def test_requester_cannot_approve_their_own_refund_but_another_person_can(client):
@@ -94,7 +95,7 @@ def test_webhook_needs_a_good_signature(tmp_path):
     from deskfern.api.app import create_app
     from deskfern.config import Settings
 
-    s = Settings(database_url=f"sqlite:///{tmp_path / 'w.sqlite3'}", session_secret="x" * 24, _env_file=None, demo_mode=False, owner_password_hash="x", chatwoot_base_url="https://cw.example.test", chatwoot_api_token="t", chatwoot_account_id="1", chatwoot_webhook_secret="whsec")
+    s = Settings(database_url=f"sqlite:///{tmp_path / 'w.sqlite3'}", session_secret="test-only-Rt7Kq2Vw9Xm4Zc8Lb3Nf6Hy1Js5Dp0Ga2Ue7Tq4Wi9", _env_file=None, demo_mode=False, owner_password_hash="x", chatwoot_base_url="https://cw.example.test", chatwoot_api_token="t", chatwoot_account_id="1", chatwoot_webhook_secret="whsec")
     s.helpdesk_adapter = "seed"
     c = TestClient(create_app(s))
     body = json.dumps({"event": "message_created", "message_type": "incoming", "id": 5, "content": "How do I export?", "created_at": int(time.time()), "sender": {"email": "a@example.test", "name": "A"}, "conversation": {"display_id": 9}}).encode()

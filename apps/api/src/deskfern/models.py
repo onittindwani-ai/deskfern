@@ -19,6 +19,16 @@ class State(Base):
     value: Mapped[str] = mapped_column(Text, default="")
 
 
+class Erased(Base):
+    """An address whose owner asked to be erased. Only a salted hash is kept, so a re-import or a new message from that address is recognised and not brought back (see privacy.py)."""
+
+    __tablename__ = "lh_erased"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    erased_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    erased_by: Mapped[str] = mapped_column(String(254), default="")
+
+
 class Customer(Base):
     __tablename__ = "lh_customer"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -119,7 +129,7 @@ class Answer(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ticket_id: Mapped[int] = mapped_column(ForeignKey("lh_ticket.id"), index=True)
     decision: Mapped[str] = mapped_column(String(12))  # answer, escalate, refuse
-    status: Mapped[str] = mapped_column(String(12), default="draft")  # draft, edited, sent, discarded
+    status: Mapped[str] = mapped_column(String(12), default="draft")  # draft; held (nothing left: draft mode or Pause all); sending (claimed, not confirmed); sent; edited (sent with the agent's edit); discarded
     text: Mapped[str] = mapped_column(Text, default="")
     sentences: Mapped[list] = mapped_column(JSON, default=list)  # {text, supported, support, chunk_ids, removed, reason}
     retrieval_strength: Mapped[float] = mapped_column(Float, default=0.0)

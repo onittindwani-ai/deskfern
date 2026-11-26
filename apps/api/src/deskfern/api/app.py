@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
+import logging
 import os
-from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from deskfern import privacy
 from deskfern.api import routes_admin, routes_auth, routes_demo, routes_read, routes_webhooks, routes_write
 from deskfern.config import Settings
 from deskfern.context import Ctx
+from deskfern.datadir import REPO_DATA
+from deskfern.dbsetup import make_private_engine
+from deskfern.loginguard import LoginGuard
 from sendora_core.app import SESSION_COOKIE, create_base_app
 from sendora_core.auth import read_session_token
-from sendora_core.db import Base, make_engine, make_session_factory
+from sendora_core.db import Base, make_session_factory
 from sendora_core.ratelimit import TokenBucket
+
+log = logging.getLogger("deskfern.app")
 
 PUBLIC = {"/api/auth/login", "/api/auth/logout"}
 PUBLIC_PREFIX = ("/api/webhooks/",)
@@ -28,29 +34,33 @@ def _seed_if_empty(ctx: Ctx) -> None:
 
     with ctx.factory() as s:
         if s.scalars(select(Customer).limit(1)).first() is None:
-            demo.reset(s, ctx)
+            try:
+                demo.reset(s, ctx)
+            except FileNotFoundError as exc:  # an installed copy with no data folder still starts, with an empty demo
+                log.warning("%s The demo starts empty.", exc)
 
 
 def create_app(settings: Settings | None = None, ctx: Ctx | None = None) -> FastAPI:
     settings = settings or Settings()
     if ctx is None:
-        engine = make_engine(settings.database_url)
+        engine = make_private_engine(settings.database_url)
         from sendora_core import models as _c  # noqa: F401
         import deskfern.models  # noqa: F401
 
         if settings.database_url.startswith("sqlite"):
             Base.metadata.create_all(engine)  # SQLite zero setup path. Postgres uses `alembic upgrade head`.
         ctx = Ctx(settings, make_session_factory(engine))
-        if not settings.seed_dir and (Path(__file__).resolve().parents[5] / "data").exists():
-            ctx.settings.seed_dir = str(Path(__file__).resolve().parents[5] / "data")
-    if ctx.settings.demo_mode:
+        if not settings.seed_dir and (REPO_DATA / "seed.json").is_file():
+            ctx.settings.seed_dir = str(REPO_DATA)  # a source checkout; an installed copy must be told with SEED_DIR
+    ctx.settings.check_runtime()  # refuse an unsafe configuration before anything is written
+    privacy.ensure_install_values(ctx.factory)
+    if ctx.settings.demo_shortcuts:
         _seed_if_empty(ctx)
     app = create_base_app(ctx.settings, ctx.factory)
-    app.title, app.version = "Deskfern API", "1.0.0"
+    app.title, app.version = "Deskfern API", "1.0.1"
     app.state.ctx = ctx
     app.state.limiter = TokenBucket(capacity=600, refill_per_sec=20.0)
-    # Sign in attempts per address and email: a burst of LOGIN_BURST (default 5), then one more every 12 seconds.
-    app.state.login_bucket = TokenBucket(capacity=ctx.settings.login_burst, refill_per_sec=1 / 12)
+    app.state.login_guard = LoginGuard(ctx.settings.login_burst, watch_one_address=not ctx.settings.demo_shortcuts)  # per address, per address and account, and per account (failures only); see loginguard.py
 
     @app.middleware("http")
     async def require_session(request: Request, call_next):

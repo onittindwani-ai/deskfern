@@ -2,7 +2,7 @@
  "openapi": "3.1.0",
  "info": {
   "title": "Deskfern API",
-  "version": "1.0.0"
+  "version": "1.0.1"
  },
  "paths": {
   "/health": {
@@ -211,6 +211,7 @@
       "required": false,
       "schema": {
        "type": "string",
+       "maxLength": 200,
        "default": "",
        "title": "Q"
       }
@@ -569,6 +570,96 @@
     }
    }
   },
+  "/api/tickets/{tid}/reply/resolve": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Say whether a reply whose send was never confirmed reached the customer",
+    "operationId": "resolve_reply_api_tickets__tid__reply_resolve_post",
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ResolveIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets/{tid}/confirm-sender": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "A person has checked who the sender is. The customer record is matched, then the draft can use the account.",
+    "operationId": "confirm_sender_api_tickets__tid__confirm_sender_post",
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/tickets/{tid}/redraft": {
    "post": {
     "tags": [
@@ -782,7 +873,7 @@
     "tags": [
      "write"
     ],
-    "summary": "Add a source. A site starts a crawl.",
+    "summary": "Add a source. A site starts a crawl: the worker runs it, and its progress is shown at /knowledge/crawl/{id}.",
     "operationId": "add_source_api_knowledge_sources_post",
     "requestBody": {
      "content": {
@@ -1024,6 +1115,142 @@
     }
    }
   },
+  "/api/knowledge/folder/sync": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Read the KNOWLEDGE_DIR folder (markdown, text and PDF files) into the knowledge base",
+    "operationId": "sync_folder_api_knowledge_folder_sync_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/customers/import": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Add or update customers from CSV text (owner only). Refund answers read their plan and payment facts.",
+    "operationId": "import_customers_api_customers_import_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CustomersIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/customers/erase": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Erase one customer and their tickets on request (owner only). Cannot be undone. The address is remembered only as a salted hash, so it is not imported or stored again.",
+    "operationId": "erase_customer_api_customers_erase_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EraseIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/customers/lift-erasure": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "summary": "Accept messages and imports from an erased address again (owner only). Audited. Nothing that was erased comes back.",
+    "operationId": "lift_erasure_api_customers_lift_erasure_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EraseIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/approvals": {
    "get": {
     "tags": [
@@ -1087,6 +1314,25 @@
         "schema": {
          "$ref": "#/components/schemas/HTTPValidationError"
         }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/actions/pay-approved": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Pay the refunds that were approved while draft mode or Pause all was on. Nothing is paid while either is still on.",
+    "operationId": "pay_approved_api_actions_pay_approved_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
        }
       }
      }
@@ -1442,6 +1688,21 @@
     ],
     "title": "AdvanceIn"
    },
+   "CustomersIn": {
+    "properties": {
+     "csv": {
+      "type": "string",
+      "maxLength": 2000000,
+      "minLength": 3,
+      "title": "Csv"
+     }
+    },
+    "type": "object",
+    "required": [
+     "csv"
+    ],
+    "title": "CustomersIn"
+   },
    "DecideIn": {
     "properties": {
      "approve": {
@@ -1460,6 +1721,21 @@
      "approve"
     ],
     "title": "DecideIn"
+   },
+   "EraseIn": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "maxLength": 254,
+      "minLength": 3,
+      "title": "Email"
+     }
+    },
+    "type": "object",
+    "required": [
+     "email"
+    ],
+    "title": "EraseIn"
    },
    "EscalateIn": {
     "properties": {
@@ -1513,10 +1789,12 @@
     "properties": {
      "email": {
       "type": "string",
+      "maxLength": 254,
       "title": "Email"
      },
      "password": {
       "type": "string",
+      "maxLength": 1024,
       "title": "Password"
      }
     },
@@ -1541,6 +1819,19 @@
      "text"
     ],
     "title": "ReplyIn"
+   },
+   "ResolveIn": {
+    "properties": {
+     "delivered": {
+      "type": "boolean",
+      "title": "Delivered"
+     }
+    },
+    "type": "object",
+    "required": [
+     "delivered"
+    ],
+    "title": "ResolveIn"
    },
    "RuleIn": {
     "properties": {

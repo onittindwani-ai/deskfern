@@ -195,7 +195,7 @@ test.describe.serial("round 5: the second walk", () => {
     const t = await (await page.request.get(`/api/tickets/${id}`)).json();
     expect(t.status).toBe("drafted");
     await page.goto(`/tickets/${id}`); await settle(page);
-    await expect(page.getByText("Approved, recorded only (draft mode)")).toBeVisible();
+    await expect(page.getByText("Approved, not paid yet (draft mode or Pause all)")).toBeVisible();
     await call(page, "/settings", { force_draft: false });
   });
 

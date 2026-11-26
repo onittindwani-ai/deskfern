@@ -1,6 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart3, BookOpen, ClipboardCheck, FlaskConical, HeartPulse, Inbox, LogOut, Pause, Plug, Scale, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AppShell, Badge, Button, CommandPalette, ConfirmDialog, notify, useTheme, type PaletteItem } from "@sendora/ui-kit";
@@ -101,17 +102,20 @@ export function AppFrame({ children }: { children: ReactNode }) {
       <Button size="sm" disabled={!canWrite} disabledReason="Viewers cannot move the clock" onClick={async () => { await advance.mutateAsync(24); }}>+1 day</Button>
     </span>
   ) : null;
+  // Tickets handed to a person wait until someone opens the queue, so their count rides in the status strip that is always there (fixed height, nothing below it moves).
+  const waiting = o?.escalated ?? 0;
+  const needs = waiting > 0 ? <Link href="/" className="lh-needs"><strong>Hand overs waiting: {waiting}</strong></Link> : null;
   return (
     <>
       {/* One status strip that is always there, so nothing below it jumps when the mode is known. */}
       {s?.kill_switch ? (
-        <div className="lh-banner lh-banner--danger" role="status"><strong>Kill switch is on.</strong> <span className="lh-hide-sm">Nothing is sent and no refund is paid.</span> <Button size="sm" variant="ghost" disabled={!owner} disabledReason="Only the owner can turn it off" onClick={async () => { await toggleKill.mutateAsync(false); }}>Turn it off</Button></div>
+        <div className="lh-banner lh-banner--danger" role="status"><strong>Kill switch is on.</strong> <span className="lh-hide-sm">Nothing is sent and no refund is paid.</span> <Button size="sm" variant="ghost" disabled={!owner} disabledReason="Only the owner can turn it off" onClick={async () => { await toggleKill.mutateAsync(false); }}>Turn it off</Button>{needs}</div>
       ) : s?.effective_mode === "draft" ? (
-        <div className="lh-banner" role="status"><strong>Draft mode.</strong> <span className="lh-grow lh-hide-sm">Nothing is sent to customers and no refund is paid. Drafts are saved.</span>{demoBar}</div>
+        <div className="lh-banner" role="status"><strong>Draft mode.</strong> <span className="lh-grow lh-hide-sm">Nothing is sent to customers and no refund is paid. Drafts are saved.</span>{needs}{demoBar}</div>
       ) : s && demo ? (
-        <div className="lh-banner lh-banner--info" role="status"><strong>Demo mode.</strong> <span className="lh-grow lh-hide-sm">Fictional company and tickets. A rules based stand in writes the drafts, not a language model.</span>{demoBar}</div>
+        <div className="lh-banner lh-banner--info" role="status"><strong>Demo mode.</strong> <span className="lh-grow lh-hide-sm">Fictional company and tickets. A rules based stand in writes the drafts, not a language model.</span>{needs}{demoBar}</div>
       ) : s ? (
-        <div className="lh-banner lh-banner--live" role="status"><strong>Live.</strong> <span className="lh-hide-sm">An agent sends every reply. Refunds run only after another person approves.</span></div>
+        <div className="lh-banner lh-banner--live" role="status"><strong>Live.</strong> <span className="lh-hide-sm">An agent sends every reply. Refunds run only after another person approves.</span>{needs}</div>
       ) : (
         <div className="lh-banner lh-banner--info" role="status">Checking the mode...</div>
       )}

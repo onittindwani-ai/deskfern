@@ -25,6 +25,7 @@ class Ctx:
     adapters: AdapterSet | Any = None
     registry: Any = None
     writer: Any = None  # a Writer for answers; None means the offline rules writer
+    crawler_factory: Any = None  # a function (ctx) returning a Crawler; None builds the real one from the settings (tests give it a fake site)
 
     def __post_init__(self) -> None:
         self.registry = self.registry or build_registry(self.settings)
@@ -42,10 +43,10 @@ class Ctx:
         return self.settings.model_copy(update=upd) if upd else self.settings
 
     def now(self, session: Session):
-        return clock.now(session, self.settings.demo_mode)
+        return clock.now(session, self.settings.demo_shortcuts)
 
     def today(self, session: Session) -> date:
-        return clock.today(session, self.settings.demo_mode)
+        return clock.today(session, self.settings.demo_shortcuts)
 
     def llm(self, session: Session) -> LLM:
         # LLM_BACKEND=offline (default) | fixture | anthropic. The offline stand in is the zero account default.

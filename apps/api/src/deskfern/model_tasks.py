@@ -78,7 +78,10 @@ ACTION_CLAIM = re.compile(
     r"|\b(?:i|we)\s+(?:refunded|approved|issued|sent|paid|credited|deleted|cancell?ed|processed|waived|upgraded|reset)\b"
     r"|\b(?:has|have|had)\s+been\s+(?:refunded|approved|issued|sent|paid|credited|deleted|cancell?ed|processed|waived)\b"
     r"|\b(?:refund|payment|request|cancellation)\s+(?:is|was|will be)\s+(?:now\s+)?(?:approved|issued|processed|sent|on its way|complete[d]?)\b"
-    r"|\b(?:i|we)\s+(?:guarantee|promise)\b",
+    r"|\b(?:i|we)\s+(?:guarantee|promise)\b"
+    r"|\byou(?:'ll| will)\s+(?:be\s+(?:refunded|credited|reimbursed|paid\s+back)|get\s+(?:your\s+(?:money|payment|funds)|a\s+(?:full\s+)?refund)(?:\s+back)?|receive\s+(?:a|your|the)\s+(?:full\s+)?refund)\b"
+    r"|\b(?:you(?:'re| are)\s+getting|you\s+(?:will\s+)?get)\s+(?:your\s+money\s+back|a\s+refund)\b"
+    r"|\b(?:your\s+)?(?:money|payment|funds)\s+(?:will\s+be|is\s+being|has\s+been)\s+(?:returned|refunded|sent\s+back|paid\s+back)\b",
     re.I,
 )
 LINK = re.compile(r"https?://\S+|www\.\S+|[\w.+-]+@[\w-]+\.[\w.-]+", re.I)

@@ -156,11 +156,25 @@ def test_live_mode_pays_once_and_the_kill_switch_stops_it(tmp_path):
     from sendora_core.settings import Mode
     from tests.conftest import make_ctx
 
+    from sendora_core.safety import write_action
+
+    class RecordingPayments:  # stands in for a connected payment system; the offline one now refuses to pretend outside demo mode
+        def __init__(self, settings):
+            self.settings, self.refunds = settings, []
+
+        @write_action("payments.refund")
+        def refund(self, *, charge_id, amount_minor, reason, idempotency_key, metadata):
+            self.refunds.append(charge_id)
+            return f"re_test_{len(self.refunds)}"
+
     c = make_ctx(tmp_path, mode=Mode.LIVE, demo_mode=False, owner_password_hash="x")
-    from deskfern import demo
+    c.adapters.payments = RecordingPayments(c.settings)
+    from deskfern import search
 
     with c.factory() as s:
-        demo.reset(s, c)
+        desk.load_world(s, c)  # the fictional world on a non demo install (demo.reset itself refuses there, see test_hardening_auth)
+        search.rebuild(s)
+        desk.process_new(s, c)
         act = s.scalars(select(PolicyAction).where(PolicyAction.status == "requested")).first()
         s.get(Approval, act.approval_id).status = "approved"
         from deskfern.context import set_state
